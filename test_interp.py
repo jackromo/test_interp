@@ -182,6 +182,25 @@ class Sequence(object):
         else:
             return (self.second, environment)
 
+class If(object):
+    """If statement (if condition then consequence else alternative)"""
+    def __init__(self, condition, consequence, alternative):
+        self.condition = condition
+        self.consequence = consequence
+        self.alternative = alternative
+    def to_str(self):
+        return "if (" + self.condition.to_str() + ") {" + self.consequence.to_str() + "} else {" + self.alternative.to_str() + "}"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Reduce condition to boolean/int. Reduce to cons or alt depending on cond."""
+        if self.condition.reducible():
+            return (If(self.condition.reduce(environment), self.consequence, self.alternative), environment)
+        elif self.condition.val:
+            return (self.consequence, environment)
+        else:
+            return (self.alternative, environment)
+
 #######################################################
 
 class Machine(object):
@@ -197,10 +216,11 @@ class Machine(object):
     def run(self):
         while self.expression.reducible():
             self.step()
-        self.step()
+        self.step() #Display last, non-reducible statement (should be DoNothing)
 
 ########################################################
 
+if_prog = If(LessThan(Number(5), Number(6)), Assign(Variable('x'), Number(5)), Assign(Variable('x'), Number(6)))
 prog = Sequence(Assign(Variable('x'), Number(5)), Assign(Variable('y'), LessThan(Number(5), Number(3))))
-mach = Machine(prog, {})
+mach = Machine(if_prog, {})
 mach.run()
