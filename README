@@ -1,8 +1,11 @@
 This is a simple interpreter of a basic programming language.
 
-It consists of a parser and back-end evaluator.
-The parser is fed a special list of tokens, which it converts to a tree of classes.
+It consists of a lexer, parser and back-end evaluator.
+The lexer takes a string as input and produces a list of tokens.
+The parser is then fed this list, which it converts to a tree of classes.
 This tree is then evaluated via small-step semantics with the evaluator.
+
+The lexer.py file has test code with a test 'program' string to run, as an example.
 
 It can comprehend:
   -expressions
@@ -11,7 +14,7 @@ It can comprehend:
   -if statements
   -sequences of statements.
 
-Here is the EBNF syntax:
+Here is the EBNF semantics:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -56,7 +59,6 @@ atom = variable
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Planned features:
-  -Working lexer
   -While loops
   -Functions calls
   -Function definitions.
