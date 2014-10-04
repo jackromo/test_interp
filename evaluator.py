@@ -189,7 +189,7 @@ class If(object):
         self.consequence = consequence
         self.alternative = alternative
     def to_str(self):
-        return "if (" + self.condition.to_str() + ") {" + self.consequence.to_str() + "} else {" + self.alternative.to_str() + "}"
+        return "if " + self.condition.to_str() + " {" + self.consequence.to_str() + "} else {" + self.alternative.to_str() + "}"
     def reducible(self):
         return True
     def reduce(self, environment):
@@ -200,6 +200,14 @@ class If(object):
             return (self.consequence, environment)
         else:
             return (self.alternative, environment)
+
+class Define(object):
+    """Function definition."""
+    pass
+
+class Execute(object):
+    """Function call."""
+    pass
 
 #######################################################
 
@@ -219,8 +227,9 @@ class Machine(object):
         self.step() #Display last, non-reducible statement (should be DoNothing)
 
 ########################################################
+#Test code.
 
-if_prog = If(LessThan(Number(5), Number(6)), Assign(Variable('x'), Number(5)), Assign(Variable('x'), Number(6)))
-prog = Sequence(Assign(Variable('x'), Number(5)), Assign(Variable('y'), LessThan(Number(5), Number(3))))
-mach = Machine(if_prog, {})
-mach.run()
+#if_prog = If(LessThan(Number(5), Number(6)), Assign(Variable('x'), Number(5)), Assign(Variable('x'), Number(6)))
+#prog = Sequence(Assign(Variable('x'), Number(5)), Assign(Variable('y'), LessThan(Number(5), Number(3))))
+#mach = Machine(if_prog, {})
+#mach.run()

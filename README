@@ -1,0 +1,62 @@
+This is a simple interpreter of a basic programming language.
+
+It consists of a parser and back-end evaluator.
+The parser is fed a special list of tokens, which it converts to a tree of classes.
+This tree is then evaluated via small-step semantics with the evaluator.
+
+It can comprehend:
+  -expressions
+  -variables
+  -assignments
+  -if statements
+  -sequences of statements.
+
+Here is the EBNF syntax:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+program = statement EOF
+;
+
+statement = sequence
+    | assign
+    | donothing
+    | block
+;
+
+sequence = [assign|donothing|block] statement
+;
+
+block = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
+;
+
+assign = variable ASGN expression EOL
+;
+
+donothing = NULL EOL
+;
+
+variable = VAR
+;
+
+expression = atom OP expression
+    | conditional
+    | LPAREN expression RPAREN
+    | atom
+;
+
+conditional = expression COMP expression
+;
+
+atom = variable
+    | NUM
+    | BOOL
+;
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Planned features:
+  -Working lexer
+  -While loops
+  -Functions calls
+  -Function definitions.
