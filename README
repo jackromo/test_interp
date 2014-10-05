@@ -6,7 +6,11 @@ The lexer takes this string as input and produces a list of tokens.
 The parser is then fed this list, which it converts to a tree of classes.
 This tree is then evaluated via small-step semantics with the evaluator.
 
-The lexer.py file has test code with a test 'program' string to run, as an example.
+To run the program, type:
+
+python interpreter.py <file_name>
+
+If no file name is given, it will attempt to run a file called 'test' in the same directory.
 
 It can comprehend:
   -expressions
@@ -14,7 +18,9 @@ It can comprehend:
   -assignments
   -sequences of statements
   -if statements
-  -while loops.
+  -while loops
+  -function definitions
+  -function calls.
 
 Here is the EBNF semantics:
 
@@ -28,6 +34,7 @@ statement = sequence
     | donothing
     | ifstmt
     | whilestmt
+    | define
 ;
 
 ifstmt = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
@@ -45,10 +52,19 @@ donothing = NULL EOL
 variable = VAR
 ;
 
+//Define a function
+define = VAR LPAREN {VAR {COMMA VAR}*}? RPAREN ASGN CLPAREN statement CRPAREN
+;
+
 expression = atom OP expression
     | conditional
     | LPAREN expression RPAREN
     | atom
+    | execute
+;
+
+//Execute a function
+execute = VAR LPAREN {expression {COMMA expression}*}? RPAREN
 ;
 
 conditional = expression COMP expression
@@ -62,5 +78,6 @@ atom = variable
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Planned features:
-  -Functions calls
-  -Function definitions.
+  -Comments (// and /* */)
+  -Print() and input() functions
+  -Pair data type, with car(p), cdr(p), setcar(p) and setcdr(p) functions for pair 'p'

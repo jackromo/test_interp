@@ -15,6 +15,7 @@ import sys
 #     | donothing
 #     | ifstmt
 #     | whilestmt
+#     | define
 # ;
 #
 # sequence = [assign|donothing|ifstmt|whilestmt] statement
@@ -29,6 +30,10 @@ import sys
 # assign = variable ASGN expression EOL
 # ;
 #
+# //Define a function
+# define = VAR LPAREN {expression {COMMA expression}*}? RPAREN ASGN CLPAREN statement CRPAREN
+# ;
+#
 # donothing = NULL EOL
 # ;
 #
@@ -39,6 +44,11 @@ import sys
 #     | conditional
 #     | LPAREN expression RPAREN
 #     | atom
+#     | execute
+# ;
+#
+# //Execute a function
+# execute = VAR LPAREN {expression {COMMA expression}*}? RPAREN
 # ;
 #
 # conditional = expression COMP expression
@@ -132,17 +142,24 @@ def statement():
         | donothing
         | ifstmt
         | whilestmt
+        | define
+        | returnstmt
     ;
 
-    sequence = [assign|donothing|ifstmt|whilestmt] statement
+    sequence = [assign|donothing|ifstmt|whilestmt|define|returnstmt] statement
     ;
     """
     temp = None
 
-    if tok_ls.found(VAR):     temp = assign()
+    if tok_ls.found(VAR):
+        if(tok_ls.ls[tok_ls.i+1].typ == LPAREN):
+            temp = define()
+        else:
+            temp = assign()
     elif tok_ls.found(NULL):  temp = donothing()
     elif tok_ls.found(IF):    temp = ifstmt()
     elif tok_ls.found(WHILE): temp = whilestmt()
+    elif tok_ls.found(RETURN): temp = returnstmt()
     else:
         error("Expected VAR, NULL or IF but found " + str(token.val))
 
@@ -194,6 +211,37 @@ def assign():
 
     return Assign(var, expr)
 
+def define():
+    """
+    define = variable LPAREN {variable {COMMA variable}*}? RPAREN ASGN CLPAREN statement CRPAREN
+    ;
+    """
+    var = variable()
+    tok_ls.consume(VAR)
+    tok_ls.consume(LPAREN)
+    args = []
+    while not tok_ls.found(RPAREN):
+        args.append(variable().name)
+        tok_ls.consume(VAR)
+        if tok_ls.found(COMMA): tok_ls.consume(COMMA)
+    tok_ls.consume(RPAREN)
+    tok_ls.consume(ASGN)
+    tok_ls.consume(CLPAREN)
+    body = statement()
+    tok_ls.consume(CRPAREN)
+
+    return Define(var.name, args, body)
+
+def returnstmt():
+    """
+    returnstmt = RETURN expression EOL
+    ;
+    """
+    tok_ls.consume(RETURN)
+    result = expression()
+    tok_ls.consume(EOL)
+    return Return(result)
+
 def donothing():
     """
     donothing = NULL EOL
@@ -218,7 +266,11 @@ def expression():
     expression = atom OP expression
         | atom COMP expression
         | LPAREN expression RPAREN
+        | execute
         | atom
+    ;
+
+    execute = variable LPAREN {expression {COMMA expression}*}? RPAREN
     ;
     """
     global token
@@ -239,6 +291,14 @@ def expression():
             oper = token.val
             tok_ls.consume(COMP)
             return Comp(start, oper, expression())
+        elif tok_ls.found(LPAREN): #execute
+            tok_ls.consume(LPAREN)
+            args = []
+            while not tok_ls.found(RPAREN):
+                args.append(expression())
+                if tok_ls.found(COMMA): tok_ls.consume(COMMA)
+            tok_ls.consume(RPAREN)
+            return Execute(start.name, args)
         else: #atom
             return start
     else: error("Expected NUM, BOOL, VAR or LPAREN but found " + token.val)

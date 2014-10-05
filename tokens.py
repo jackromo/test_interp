@@ -21,3 +21,5 @@ EOF = 13 #End of file
 CLPAREN = 14 #Curly left parenthesis ({)
 CRPAREN = 15 #Curly right parenthesis (})
 WHILE = 16
+COMMA = 17
+RETURN = 18 #return keyword for function returns

@@ -99,7 +99,12 @@ class Variable(object):
         return True
     def reduce(self, environment):
         """Look up value, reduce to that."""
-        return environment[self.name]
+        if environment[0][self.name]:
+            return environment[0][self.name]
+        elif environment[1][self.name]:
+            return environment[1][self.name]
+        else:
+            return None
 
 # Statements ##########################################
 # Statements include assignments, if-else, sequences, and null statement.
@@ -131,7 +136,7 @@ class Assign(object):
         if self.value.reducible():
             return (Assign(self.variable, self.value.reduce(environment)), environment)
         else:
-            environment[self.variable.to_str()] = self.value
+            environment[0][self.variable.to_str()] = self.value
             return (DoNothing(), environment)
 
 class Sequence(object):
@@ -189,24 +194,79 @@ class While(object):
 
 class Define(object):
     """Function definition."""
-    pass
+    def __init__(self, name, arg_ls, body):
+        self.name = name
+        self.arg_ls = arg_ls #List of strings, each is name of each arg.
+        self.body = body  #Function body. Do NOT reduce.
+    def to_str(self):
+        return self.name + "(" + ",".join(self.arg_ls) + ") = {" + self.body.to_str() + "}"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Do not reduce body.
+        Functions are stored as tuple of parameters and body.
+        They are stored in second dict in environment, for functions only."""
+        environment[1][self.name] = [self.arg_ls, self.body]
+        return (DoNothing(), environment)
 
 class Execute(object):
-    """Function call."""
-    pass
+    """Function call. Contains arguments supplied and name of called function."""
+    def __init__(self, name, arg_ls):
+        self.name = name
+        self.arg_ls = arg_ls
+    def to_str(self):
+        return self.name + "(" + ",".join([x.to_str() for x in self.arg_ls]) + ")"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Reduce all arguments.
+        After, create new machine and run.
+        Reduce to '_return_' variable in environment."""
+        if any([x.reducible() for x in self.arg_ls]):
+            return Execute(self.name, [x.reduce(environment) for x in self.arg_ls])
+        else:
+            body = environment[1][self.name]
+            temp_env = copy.deepcopy(environment)
+            for i in range(len(self.arg_ls)):
+                #Set function parameters as temporary variables.
+                #Remember that function val is stored as tuple of params and body.
+                #Thus, temp_env[1][self.name][0][i] accesses i-th param name of function.
+                temp_env[0][temp_env[1][self.name][0][i]] = self.arg_ls[i]
+            temp_env[0]["_return_"] = Number(0) #Set return value of function to 0 by default.
+            #Make machine to run function body separately. Give function body and temp_env.
+            temp_mach = Machine(temp_env[1][self.name][1], temp_env)
+            return temp_mach.run()[0]["_return_"] #Run function. Return value of '_return_' variable.
+
+class Return(object):
+    """Return statement in a function. eg. return 5"""
+    def __init__(self, val):
+        self.val = val
+    def to_str(self):
+        return "return " + self.val.to_str()
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Set _return_ variable to value of expression."""
+        if self.val.reducible():
+            return (Return(self.val.reduce(environment)), environment)
+        else:
+            environment[0]['_return_'] = self.val
+            return (DoNothing(), environment)
 
 #######################################################
+
 
 class Machine(object):
     """Reduces and executes small-step semantics of AST from parser."""
     def __init__(self, expression, environment):
         self.expression = expression
-        self.environment = environment
+        self.environment = environment #Environment is a list of two dicts, for vars and funcs.
         self.i = 0 #Current step
     def step(self):
         #Create string of dict of variables to print environment
-        env_str = "[" + ", ".join([x[0] + ":" + x[1].to_str() for x in self.environment.items()]) + "]"
-        state_str = self.expression.to_str() + " " + env_str
+        var_str = "[" + ", ".join([x[0] + ":" + x[1].to_str() for x in self.environment[0].items()]) + "]"
+        fnc_str = "[" + ", ".join([x[0] + ":" + x[1][1].to_str() for x in self.environment[1].items()]) + "]"
+        state_str = self.expression.to_str() + " " + var_str + " " + fnc_str
         #Print current state, comment out to turn off printing state
         print str(self.i+1) + " | " + state_str
         #Increment i to signify step has been taken.
@@ -217,6 +277,7 @@ class Machine(object):
         while self.expression.reducible():
             self.step()
         self.step() #Display last, non-reducible statement (should be DoNothing)
+        return self.environment
 
 ########################################################
 #Test code.

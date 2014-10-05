@@ -11,7 +11,8 @@ def interpret(program):
     Lexer feeds tokens to parser, which feeds object to machine."""
     lxr = lexer.Lexer(program)
     prsr = parser.Parser(lxr.lex())
-    mach = evaluator.Machine(prsr.run(), {})
+    #Machine is passed an environment, which is a list of two dicts. One holds vars, the other funcs.
+    mach = evaluator.Machine(prsr.run(), [{}, {}])
     mach.run()
 
 if(len(sys.argv) > 1):
