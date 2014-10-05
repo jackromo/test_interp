@@ -1,12 +1,13 @@
-#Small step semantics interpreter.
+import operator
 
+#Small step semantics interpreter.
 
 # Data types #####################################
 
 class Number(object):
     """Number class. Non reducible."""
     def __init__(self, val=0):
-        self.val = val
+        self.val = int(val)
     def to_str(self):
         return str(self.val)
     def reducible(self):
@@ -25,96 +26,64 @@ class Boolean(object):
     def reduce(self, environment):
         return self
 
+def get_op(op):
+    """Get operator function from string."""
+    return {"+": operator.add,
+            "-": operator.sub,
+            "*": operator.mul,
+            "/": operator.div,
+            "%": operator.mod,
+            "<": operator.lt,
+            ">": operator.gt,
+            "==": operator.eq,
+            "!=": operator.ne
+            }[op]
+
 # Compound terms #################################
 # Include add, multiply, less than, greater than, equal to.
 # Each is a collection of multiple terms.
 
-class Add(object):
-    """Addition of two numbers. Reduces to sum or reduced terms."""
-    def __init__(self, addend, augend):
-        self.addend = addend
-        self.augend = augend
-    def to_str(self):
-        return self.addend.to_str() + "+" + self.augend.to_str()
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        """If term 1 reduces, reduce it. Else, if term 2 reduces, reduce it. Else, reduce to sum of terms."""
-        if(self.addend.reducible()):
-            return Add(self.addend.reduce(environment), self.augend)
-        elif(self.augend.reducible()):
-            return Add(self.addend, self.augend.reduce(environment))
-        else:
-            return Number(self.addend.val + self.augend.val)
-
-class Multiply(object):
-    """Multiplication of two numbers. Reduces to product of terms."""
-    def __init__(self, multiplier, multiplicand):
-        self.multiplier = multiplier
-        self.multiplicand = multiplicand
-    def to_str(self):
-        return self.multiplier.to_str() + "*" + self.multiplicand.to_str()
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        """If term 1 reduces, reduce it. Else, if term 2 reduces, reduce it. Else, reduce to product."""
-        if self.multiplier.reducible():
-            return Multiply(self.multiplier.reduce(environment), self.multiplicand)
-        elif self.multiplicand.reducible():
-            return Multiply(self.multiplier, self.multiplicand.reduce(environment))
-        else:
-            return Number(self.multiplier.val * self.multiplicand.val)
-
-class LessThan(object):
-    def __init__(self, first, second):
+class Op(object):
+    """Operation (+-*/%), returns number."""
+    def __init__(self, first, op, second):
         self.first = first
+        self.op = op
         self.second = second
     def to_str(self):
-        return self.first.to_str() + "<" + self.second.to_str();
+        return self.first.to_str() + self.op + self.second.to_str()
     def reducible(self):
         return True
     def reduce(self, environment):
-        """Reduce term 1 first, then term 2, then to a boolean of first < second."""
-        if self.first.reducible():
-            return LessThan(self.first.reduce(environment), self.second)
-        elif self.second.reducible():
-            return LessThan(self.first, self.second.reduce(environment))
+        """If term 1 reduces, reduce it.
+        Else, if term 2 reduces, reduce it.
+        Else, reduce operation of terms."""
+        if(self.first.reducible()):
+            return Op(self.first.reduce(environment), self.op, self.second)
+        elif(self.second.reducible()):
+            return Op(self.first, self.op, self.second.reduce(environment))
         else:
-            return Boolean(self.first.val < self.second.val)
+            return Number(get_op(self.op)(self.first.val, self.second.val))
 
-class GreaterThan(object):
-    def __init__(self, first, second):
+class Comp(object):
+    """Comparison (><==), returns boolean."""
+    def __init__(self, first, op, second):
         self.first = first
+        self.op = op
         self.second = second
     def to_str(self):
-        return self.first.to_str() + ">" + self.second.to_str();
+        return self.first.to_str() + self.op + self.second.to_str()
     def reducible(self):
         return True
     def reduce(self, environment):
-        """Reduce term 1 first, then term 2, then to a boolean of first > second."""
-        if self.first.reducible():
-            return GreaterThan(self.first.reduce(environment), self.second)
-        elif self.second.reducible():
-            return GreaterThan(self.first, self.second.reduce(environment))
+        """If term 1 reduces, reduce it.
+        Else, if term 2 reduces, reduce it.
+        Else, reduce comparison of terms."""
+        if(self.first.reducible()):
+            return Op(self.first.reduce(environment), self.op, self.second)
+        elif(self.second.reducible()):
+            return Op(self.first, self.op, self.second.reduce(environment))
         else:
-            return Boolean(self.first.val > self.second.val)
-
-class EqualTo(object):
-    def __init__(self, first, second):
-        self.first = first
-        self.second = second
-    def to_str(self):
-        return self.first.to_str() + "==" + self.second.to_str();
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        """Reduce term 1 first, then term 2, then to a boolean of first == second."""
-        if self.first.reducible():
-            return EqualTo(self.first.reduce(environment), self.second)
-        elif self.second.reducible():
-            return EqualTo(self.first, self.second.reduce(environment))
-        else:
-            return Boolean(self.first.val == self.second.val)
+            return Boolean(get_op(self.op)(self.first.val, self.second.val))
 
 
 #######################################################
@@ -216,10 +185,15 @@ class Machine(object):
     def __init__(self, expression, environment):
         self.expression = expression
         self.environment = environment
+        self.i = 0 #Current step
     def step(self):
-        #Create nice-looking array of variables to print environment
+        #Create string of dict of variables to print environment
         env_str = "[" + ", ".join([x[0] + ":" + x[1].to_str() for x in self.environment.items()]) + "]"
-        print self.expression.to_str() + " " + env_str
+        state_str = self.expression.to_str() + " " + env_str
+        print str(self.i+1) + " | " + state_str
+        #Increment i to signify step has been taken.
+        self.i += 1
+        #Reduce expression and update environment.
         self.expression, self.environment = self.expression.reduce(self.environment)
     def run(self):
         while self.expression.reducible():

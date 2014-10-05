@@ -160,7 +160,7 @@ def statement():
 
     if tok_ls.found(VAR):    temp = assign()
     elif tok_ls.found(NULL): temp = donothing()
-    elif tok_ls.found(IF):   temp = block()
+    elif tok_ls.found(IF):   temp = ifstmt()
     else:
         error("Expected VAR, NULL or IF but found " + str(token.val))
 
@@ -168,7 +168,7 @@ def statement():
         return Sequence(temp, statement())
     return temp
 
-def block():
+def ifstmt():
     """
     block = IF conditional THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
     ;
@@ -239,16 +239,11 @@ def expression():
         if tok_ls.found(OP): #atom OP expression
             oper = token.val
             tok_ls.consume(OP)
-            if oper == "+": return Add(start, expression())
-            elif oper == "*": return Multiply(start, expression())
-            else: error("Unknown OP: " + oper)
+            return Op(start, oper, expression())
         elif tok_ls.found(COMP): #atom COMP expression
             oper = token.val
             tok_ls.consume(COMP)
-            if oper == "<": return LessThan(start, expression())
-            elif oper == ">": return GreaterThan(start, expression())
-            elif oper == "==": return EqualTo(start, expression())
-            else: error("Unknown COMP: " + oper)
+            return Comp(start, oper, expression())
         else: #atom
             return start
     else: error("Expected NUM, BOOL, VAR or LPAREN but found " + token.val)

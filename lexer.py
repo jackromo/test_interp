@@ -49,12 +49,9 @@ class Lexer(object):
         elif re.search('true', item): return Token(BOOL, True)
         elif re.search('false', item): return Token(BOOL, False)
         elif re.search('[0-9]+', item): return Token(NUM, int(item))
-        elif re.search('\==', item): return Token(COMP, item)
+        elif re.search('(==|<|>|!=)', item): return Token(COMP, item)
         elif re.search('\=', item): return Token(ASGN, item)
-        elif re.search('\<', item): return Token(COMP, item)
-        elif re.search('\>', item): return Token(COMP, item)
-        elif re.search('\+', item): return Token(OP, item)
-        elif re.search('\*', item): return Token(OP, item)
+        elif re.search('(\+|\-|\*|\/|%)', item): return Token(OP, item)
         elif re.search('\(', item): return Token(LPAREN, item)
         elif re.search('\)', item): return Token(RPAREN, item)
         elif re.search('\{', item): return Token(CLPAREN, item)
@@ -69,20 +66,20 @@ class Lexer(object):
 #-----------------------------------------#
 
 
-prog = """
-x = 6;
-if x==false then {
-    y=x;
-    y=x+1;
-} else {
-    y = x;
-    y = x*10;
-}
-"""
-
-prog = raw_input()
-
-lxr = Lexer(prog)
-parser = Parser(lxr.lex())
-mach = Machine(parser.run(), {})
-mach.run()
+#prog = """
+#x = 6;
+#if x==false then {
+#    y=x;
+#    y=x+1;
+#} else {
+#    y = x;
+#    y = x*10;
+#}
+#"""
+#
+#prog = raw_input()
+#
+#lxr = Lexer(prog)
+#parser = Parser(lxr.lex())
+#mach = Machine(parser.run(), {})
+#mach.run()

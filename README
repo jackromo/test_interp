@@ -1,7 +1,8 @@
 This is a simple interpreter of a basic programming language.
 
 It consists of a lexer, parser and back-end evaluator.
-The lexer takes a string as input and produces a list of tokens.
+The interpreter.py file reads a source file and feeds it to the lexer.
+The lexer takes this string as input and produces a list of tokens.
 The parser is then fed this list, which it converts to a tree of classes.
 This tree is then evaluated via small-step semantics with the evaluator.
 
@@ -24,13 +25,10 @@ program = statement EOF
 statement = sequence
     | assign
     | donothing
-    | block
+    | ifstmt
 ;
 
-sequence = [assign|donothing|block] statement
-;
-
-block = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
+ifstmt = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
 ;
 
 assign = variable ASGN expression EOL
