@@ -12,13 +12,17 @@ import sys
 # statement = sequence
 #     | assign
 #     | donothing
-#     | block
+#     | ifstmt
+#     | whilestmt
 # ;
 #
-# sequence = [assign|donothing|block] statement
+# sequence = [assign|donothing|ifstmt|whilestmt] statement
 # ;
 #
-# block = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
+# ifstmt = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
+# ;
+#
+# whilestmt = WHILE expression CLPAREN statement CRPAREN
 # ;
 #
 # assign = variable ASGN expression EOL
@@ -69,6 +73,7 @@ RPAREN = 12
 EOF = 13 #End of file
 CLPAREN = 14 #Curly left parenthesis ({)
 CRPAREN = 15 #Curly right parenthesis (})
+WHILE = 16
 
 
 #------------------------------------------#
@@ -150,17 +155,19 @@ def statement():
     statement = sequence
         | assign
         | donothing
-        | block
+        | ifstmt
+        | whilestmt
     ;
 
-    sequence = [assign|donothing|block] statement
+    sequence = [assign|donothing|ifstmt|whilestmt] statement
     ;
     """
     temp = None
 
-    if tok_ls.found(VAR):    temp = assign()
-    elif tok_ls.found(NULL): temp = donothing()
-    elif tok_ls.found(IF):   temp = ifstmt()
+    if tok_ls.found(VAR):     temp = assign()
+    elif tok_ls.found(NULL):  temp = donothing()
+    elif tok_ls.found(IF):    temp = ifstmt()
+    elif tok_ls.found(WHILE): temp = whilestmt()
     else:
         error("Expected VAR, NULL or IF but found " + str(token.val))
 
@@ -170,7 +177,7 @@ def statement():
 
 def ifstmt():
     """
-    block = IF conditional THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
+    ifstmt = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
     ;
     """
     tok_ls.consume(IF)
@@ -185,6 +192,19 @@ def ifstmt():
     tok_ls.consume(CRPAREN)
 
     return If(cond, then, alt)
+
+def whilestmt():
+    """
+    whilestmt = WHILE expression CLPAREN statement CRPAREN
+    ;
+    """
+    tok_ls.consume(WHILE)
+    cond = expression()
+    tok_ls.consume(CLPAREN)
+    body = statement()
+    tok_ls.consume(CRPAREN)
+
+    return While(cond, body)
 
 def assign():
     """

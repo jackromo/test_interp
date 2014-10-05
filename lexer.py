@@ -25,6 +25,7 @@ RPAREN = 12
 EOF = 13 #End of file
 CLPAREN = 14 #Curly left parenthesis ({)
 CRPAREN = 15 #Curly right parenthesis (})
+WHILE = 16
 
 
 #-----------------------------------------#
@@ -46,6 +47,7 @@ class Lexer(object):
         if re.search('if', item): return Token(IF, item)
         elif re.search('then', item): return Token(THEN, item)
         elif re.search('else', item): return Token(ELSE, item)
+        elif re.search('while', item): return Token(WHILE, item)
         elif re.search('true', item): return Token(BOOL, True)
         elif re.search('false', item): return Token(BOOL, False)
         elif re.search('[0-9]+', item): return Token(NUM, int(item))

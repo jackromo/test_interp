@@ -12,8 +12,9 @@ It can comprehend:
   -expressions
   -variables
   -assignments
+  -sequences of statements
   -if statements
-  -sequences of statements.
+  -while loops.
 
 Here is the EBNF semantics:
 
@@ -26,9 +27,13 @@ statement = sequence
     | assign
     | donothing
     | ifstmt
+    | whilestmt
 ;
 
 ifstmt = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
+;
+
+whilestmt = WHILE expression CLPAREN statement CRPAREN
 ;
 
 assign = variable ASGN expression EOL
@@ -57,6 +62,5 @@ atom = variable
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Planned features:
-  -While loops
   -Functions calls
   -Function definitions.

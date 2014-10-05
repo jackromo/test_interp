@@ -1,4 +1,5 @@
 import operator
+import copy
 
 #Small step semantics interpreter.
 
@@ -170,6 +171,22 @@ class If(object):
         else:
             return (self.alternative, environment)
 
+class While(object):
+    """While loop (while condition body)"""
+    def __init__(self, condition, body):
+        self.condition = condition
+        self.body = body
+    def to_str(self):
+        return "while " + self.condition.to_str() + " {" + self.body.to_str() + "}"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Reduce to {if condition then sequence(body while_loop) else do_nothing}
+        Don't reduce condition or body; reduced in if statement."""
+        # copy.deepcopy(self.body) makes copy of body of while statement.
+        # This stops reduction of body outside of while loop changing next while loop.
+        return (If(self.condition, Sequence(copy.deepcopy(self.body), self), DoNothing()), environment)
+
 class Define(object):
     """Function definition."""
     pass
@@ -190,6 +207,7 @@ class Machine(object):
         #Create string of dict of variables to print environment
         env_str = "[" + ", ".join([x[0] + ":" + x[1].to_str() for x in self.environment.items()]) + "]"
         state_str = self.expression.to_str() + " " + env_str
+        #Print current state, comment out to turn off printing state
         print str(self.i+1) + " | " + state_str
         #Increment i to signify step has been taken.
         self.i += 1
