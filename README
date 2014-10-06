@@ -19,8 +19,8 @@ It can comprehend:
   -sequences of statements
   -if statements
   -while loops
-  -function definitions
-  -function calls.
+  -function definitions and calls
+  -pairs, with car(p), cdr(p), p=setcar(p,newcar) and p=setcdr(p,newcdr) functions for pair 'p'.
 
 Here is the EBNF semantics:
 
@@ -35,6 +35,9 @@ statement = sequence
     | ifstmt
     | whilestmt
     | define
+;
+
+sequence = [assign|donothing|ifstmt|whilestmt|define] statement
 ;
 
 ifstmt = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
@@ -73,6 +76,11 @@ conditional = expression COMP expression
 atom = variable
     | NUM
     | BOOL
+    | pair
+;
+
+//pair definition
+pair = SLPAREN expression COMMA expression SRPAREN
 ;
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -80,4 +88,4 @@ atom = variable
 Planned features:
   -Comments (// and /* */)
   -Print() and input() functions
-  -Pair data type, with car(p), cdr(p), setcar(p) and setcdr(p) functions for pair 'p'
+  -Multi-file programs (import <filename>) and libraries

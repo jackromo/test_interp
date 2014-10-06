@@ -23,3 +23,5 @@ CRPAREN = 15 #Curly right parenthesis (})
 WHILE = 16
 COMMA = 17
 RETURN = 18 #return keyword for function returns
+SLPAREN = 19 #square left parenthesis ([)
+SRPAREN = 20 #square right parenthesis (])

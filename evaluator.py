@@ -27,6 +27,26 @@ class Boolean(object):
     def reduce(self, environment):
         return self
 
+class Pair(object):
+    """Pair class of two values."""
+    def __init__(self, car, cdr):
+        self.car = car
+        self.cdr = cdr
+    def to_str(self):
+        return "(" + self.car.to_str() + ", " + self.cdr.to_str() + ")"
+    def reducible(self):
+        """Reducible if car or cdr are reducible."""
+        if self.car.reducible() or self.cdr.reducible(): return True
+        else: return False
+    def reduce(self, envionment):
+        """Reduce car and cdr."""
+        if self.car.reducible():
+            return Pair(self.car.reduce(environment), self.cdr)
+        elif self.cdr.reducible():
+            return Pair(self.car, self.cdr.reduce(environment))
+        else:
+            return self
+
 def get_op(op):
     """Get operator function from string."""
     return {"+": operator.add,
@@ -225,17 +245,91 @@ class Execute(object):
         if any([x.reducible() for x in self.arg_ls]):
             return Execute(self.name, [x.reduce(environment) for x in self.arg_ls])
         else:
-            body = environment[1][self.name]
-            temp_env = copy.deepcopy(environment)
-            for i in range(len(self.arg_ls)):
-                #Set function parameters as temporary variables.
-                #Remember that function val is stored as tuple of params and body.
-                #Thus, temp_env[1][self.name][0][i] accesses i-th param name of function.
-                temp_env[0][temp_env[1][self.name][0][i]] = self.arg_ls[i]
-            temp_env[0]["_return_"] = Number(0) #Set return value of function to 0 by default.
-            #Make machine to run function body separately. Give function body and temp_env.
-            temp_mach = Machine(temp_env[1][self.name][1], temp_env)
-            return temp_mach.run()[0]["_return_"] #Run function. Return value of '_return_' variable.
+            #Check if predefined function
+            if self.name == "car": return Car(self.arg_ls[0])
+            elif self.name == "cdr": return Cdr(self.arg_ls[0])
+            elif self.name == "setcar": return SetCar(self.arg_ls[0], self.arg_ls[1])
+            elif self.name == "setcdr": return SetCdr(self.arg_ls[0], self.arg_ls[1])
+            #Else, proceed as normal
+            else:
+                body = environment[1][self.name]
+                temp_env = copy.deepcopy(environment)
+                for i in range(len(self.arg_ls)):
+                    #Set function parameters as temporary variables.
+                    #Remember that function val is stored as tuple of params and body.
+                    #Thus, temp_env[1][self.name][0][i] accesses i-th param name of function.
+                    temp_env[0][temp_env[1][self.name][0][i]] = self.arg_ls[i]
+                temp_env[0]["_return_"] = Number(0) #Set return value of function to 0 by default.
+                #Make machine to run function body separately. Give function body and temp_env.
+                temp_mach = Machine(temp_env[1][self.name][1], temp_env)
+                return temp_mach.run()[0]["_return_"] #Run function. Return value of '_return_' variable.
+
+
+# Predefined functions and statements ##################
+#Includes return, car(), cdr, setcar(), setcdr(), etc.
+
+
+class Car(object):
+    """Call car() function on pair, returns car value."""
+    def __init__(self, pair):
+        self.pair = pair
+    def to_str(self):
+        return "car(" + self.pair.to_str() + ")"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        if self.pair.reducible():
+            return Car(self.pair.reduce(environment))
+        else:
+            return self.pair.car
+
+class Cdr(object):
+    """Call cdr() function on pair, returns cdr value."""
+    def __init__(self, pair):
+        self.pair = pair
+    def to_str(self):
+        return "cdr(" + self.pair.to_str() + ")"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        if self.pair.reducible():
+            return Cdr(self.pair.reduce(environment))
+        else:
+            return self.pair.cdr
+
+class SetCar(object):
+    """Call setcar() function on pair, returns pair with new car."""
+    def __init__(self, pair, new):
+        self.pair = pair
+        self.new = new
+    def to_str(self):
+        return "setcar(" + self.pair.to_str() + "," + self.new.to_str() + ")"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        if self.pair.reducible():
+            return SetCar(self.pair.reduce(environment), self.new)
+        elif self.new.reducible():
+            return SetCar(self.pair, self.new.reduce(environment))
+        else:
+            return Pair(self.new, self.pair.cdr)
+
+class SetCdr(object):
+    """Call setcdr() function on pair, returns pair with new cdr."""
+    def __init__(self, pair, new):
+        self.pair = pair
+        self.new = new
+    def to_str(self):
+        return "setcdr(" + self.pair.to_str() + "," + self.new.to_str() + ")"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        if self.pair.reducible():
+            return SetCar(self.pair.reduce(environment), self.new)
+        elif self.new.reducible():
+            return SetCar(self.pair, self.new.reduce(environment))
+        else:
+            return Pair(self.pair.car, self.new)
 
 class Return(object):
     """Return statement in a function. eg. return 5"""
@@ -253,7 +347,8 @@ class Return(object):
             environment[0]['_return_'] = self.val
             return (DoNothing(), environment)
 
-#######################################################
+
+# Define machine to run evaluator.########################
 
 
 class Machine(object):
@@ -278,6 +373,7 @@ class Machine(object):
             self.step()
         self.step() #Display last, non-reducible statement (should be DoNothing)
         return self.environment
+
 
 ########################################################
 #Test code.

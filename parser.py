@@ -18,7 +18,7 @@ import sys
 #     | define
 # ;
 #
-# sequence = [assign|donothing|ifstmt|whilestmt] statement
+# sequence = [assign|donothing|ifstmt|whilestmt|define] statement
 # ;
 #
 # ifstmt = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
@@ -41,7 +41,7 @@ import sys
 # ;
 #
 # expression = atom OP expression
-#     | conditional
+#     | atom COMP expression
 #     | LPAREN expression RPAREN
 #     | atom
 #     | execute
@@ -51,14 +51,15 @@ import sys
 # execute = VAR LPAREN {expression {COMMA expression}*}? RPAREN
 # ;
 #
-# conditional = expression COMP expression
-# ;
-#
 # atom = variable
 #     | NUM
 #     | BOOL
+#     | pair
 # ;
-# """
+#
+# //Define a pair
+# pair = SLPAREN expression COMMA expression SRPAREN
+# ;
 
 
 #------------------------------------------#
@@ -123,7 +124,7 @@ class TokenList(object):
 
 #------------------------------------------#
 # Define all reduction rules.###############
-#-----------------------------------------#
+#------------------------------------------#
 
 
 def program():
@@ -280,7 +281,7 @@ def expression():
         result = expression()
         tok_ls.consume(RPAREN)
         return result
-    elif tok_ls.foundOneOf([NUM, BOOL, VAR]):
+    elif tok_ls.foundOneOf([NUM, BOOL, VAR, SLPAREN]):
         start = atom()
         tok_ls.getToken()
         if tok_ls.found(OP): #atom OP expression
@@ -308,6 +309,7 @@ def atom():
     atom = variable
         | BOOL
         | NUM
+        | pair
     ;
     """
     global token
@@ -315,7 +317,22 @@ def atom():
     if tok_ls.found(NUM): atom = Number(token.val)
     elif tok_ls.found(BOOL): atom = Boolean(token.val)
     elif tok_ls.found(VAR): atom = variable()
+    elif tok_ls.found(SLPAREN): atom = pair()
     return atom
+
+def pair():
+    """
+    pair = SLPAREN expression COMMA expression SRPAREN
+    ;
+    """
+    global token
+
+    tok_ls.consume(SLPAREN)
+    car = expression()
+    tok_ls.consume(COMMA)
+    cdr = expression()
+    #Don't consume last SRPAREN, consumed in getToken() call in expression()
+    return Pair(car, cdr)
 
 
 #------------------------------------------#

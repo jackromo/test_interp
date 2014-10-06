@@ -15,7 +15,7 @@ class Lexer(object):
     def __init__(self, inp):
         self.inp = inp
     def lex(self):
-        items = re.findall('[0-9a-z]+|[,+*/(){};-]|[<=>]+', self.inp)
+        items = re.findall('[0-9a-z]+|[,+*/(){}\[\];-]|[<=>]+', self.inp)
         tokens = TokenList([self.choose_tok(x) for x in items])
         tokens.ls.append(Token(EOF, "eof")) #no end-of-file in string input
         return tokens
@@ -31,6 +31,8 @@ class Lexer(object):
         elif re.search('(==|<|>|!=)', item): return Token(COMP, item)
         elif re.search('\=', item): return Token(ASGN, item)
         elif re.search('(\+|\-|\*|\/|%)', item): return Token(OP, item)
+        elif re.search('\[', item): return Token(SLPAREN, item)
+        elif re.search('\]', item): return Token(SRPAREN, item)
         elif re.search('\(', item): return Token(LPAREN, item)
         elif re.search('\)', item): return Token(RPAREN, item)
         elif re.search('\{', item): return Token(CLPAREN, item)
