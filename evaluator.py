@@ -47,6 +47,17 @@ class Pair(object):
         else:
             return self
 
+class String(object):
+    """String data type, non-reducible."""
+    def __init__(self, val):
+        self.val = val #String value
+    def to_str(self):
+        return "\"" + self.val + "\""
+    def reducible(self):
+        return False
+    def reduce(self, environment):
+        return self
+
 def get_op(op):
     """Get operator function from string."""
     return {"+": operator.add,
@@ -77,13 +88,24 @@ class Op(object):
     def reduce(self, environment):
         """If term 1 reduces, reduce it.
         Else, if term 2 reduces, reduce it.
-        Else, reduce operation of terms."""
+        Else, reduce operation of terms.
+        Remember to make types of operands the same so op works."""
         if(self.first.reducible()):
             return Op(self.first.reduce(environment), self.op, self.second)
         elif(self.second.reducible()):
             return Op(self.first, self.op, self.second.reduce(environment))
         else:
-            return Number(get_op(self.op)(self.first.val, self.second.val))
+            #Make operand types same so op works.
+            if type(self.first) != type(self.second):
+                if isinstance(self.first, String):
+                    self.second = String(str(self.second.val))
+                elif isinstance(self.second, String):
+                    self.first = String(str(self.first.val))
+            result = get_op(self.op)(self.first.val, self.second.val)
+            if(isinstance(self.first, String)):
+                return String(result)
+            else: #Must be number, not boolean because not comparison
+                return Number(result)
 
 class Comp(object):
     """Comparison (><==), returns boolean."""

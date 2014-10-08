@@ -40,8 +40,8 @@ import sys
 # variable = VAR
 # ;
 #
-# expression = atom OP expression
-#     | atom COMP expression
+# expression = [atom|execute] OP expression
+#     | [atom|execute] COMP expression
 #     | LPAREN expression RPAREN
 #     | atom
 #     | execute
@@ -54,12 +54,14 @@ import sys
 # atom = variable
 #     | NUM
 #     | BOOL
+#     | STR
 #     | pair
 # ;
 #
 # //Define a pair
 # pair = SLPAREN expression COMMA expression SRPAREN
 # ;
+#
 
 
 #------------------------------------------#
@@ -264,11 +266,11 @@ def variable():
 
 def expression():
     """
-    expression = atom OP expression
-        | atom COMP expression
+    expression = [atom|execute] OP expression
+        | [atom|execute] COMP expression
         | LPAREN expression RPAREN
-        | execute
         | atom
+        | execute
     ;
 
     execute = variable LPAREN {expression {COMMA expression}*}? RPAREN
@@ -281,26 +283,27 @@ def expression():
         result = expression()
         tok_ls.consume(RPAREN)
         return result
-    elif tok_ls.foundOneOf([NUM, BOOL, VAR, SLPAREN]):
+    elif tok_ls.foundOneOf([NUM, BOOL, VAR, SLPAREN, STR]):
         start = atom()
         tok_ls.getToken()
-        if tok_ls.found(OP): #atom OP expression
-            oper = token.val
-            tok_ls.consume(OP)
-            return Op(start, oper, expression())
-        elif tok_ls.found(COMP): #atom COMP expression
-            oper = token.val
-            tok_ls.consume(COMP)
-            return Comp(start, oper, expression())
-        elif tok_ls.found(LPAREN): #execute
+        if tok_ls.found(LPAREN): #execute
+            #Set start to be an execute, will be [atom|execute] in rules above
             tok_ls.consume(LPAREN)
             args = []
             while not tok_ls.found(RPAREN):
                 args.append(expression())
                 if tok_ls.found(COMMA): tok_ls.consume(COMMA)
             tok_ls.consume(RPAREN)
-            return Execute(start.name, args)
-        else: #atom
+            start = Execute(start.name, args)
+        if tok_ls.found(OP): #[atom|execute] OP expression
+            oper = token.val
+            tok_ls.consume(OP)
+            return Op(start, oper, expression())
+        elif tok_ls.found(COMP): #[atom|execute] COMP expression
+            oper = token.val
+            tok_ls.consume(COMP)
+            return Comp(start, oper, expression())
+        else: #atom|execute
             return start
     else: error("Expected NUM, BOOL, VAR or LPAREN but found " + token.val)
 
@@ -317,6 +320,7 @@ def atom():
     if tok_ls.found(NUM): atom = Number(token.val)
     elif tok_ls.found(BOOL): atom = Boolean(token.val)
     elif tok_ls.found(VAR): atom = variable()
+    elif tok_ls.found(STR): atom = String(token.val)
     elif tok_ls.found(SLPAREN): atom = pair()
     return atom
 

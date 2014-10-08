@@ -13,6 +13,7 @@ python interpreter.py <file_name>
 If no file name is given, it will attempt to run a file called 'test' in the same directory.
 
 It can comprehend:
+  -integers, booleans and strings
   -expressions
   -variables
   -assignments
@@ -22,68 +23,7 @@ It can comprehend:
   -function definitions and calls
   -pairs, with car(p), cdr(p), p=setcar(p,newcar) and p=setcdr(p,newcdr) functions for pair 'p'.
 
-Here is the EBNF semantics:
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-program = statement EOF
-;
-
-statement = sequence
-    | assign
-    | donothing
-    | ifstmt
-    | whilestmt
-    | define
-;
-
-sequence = [assign|donothing|ifstmt|whilestmt|define] statement
-;
-
-ifstmt = IF expression THEN CLPAREN statement CRPAREN ELSE CLPAREN statement CRPAREN
-;
-
-whilestmt = WHILE expression CLPAREN statement CRPAREN
-;
-
-assign = variable ASGN expression EOL
-;
-
-donothing = NULL EOL
-;
-
-variable = VAR
-;
-
-//Define a function
-define = VAR LPAREN {VAR {COMMA VAR}*}? RPAREN ASGN CLPAREN statement CRPAREN
-;
-
-expression = atom OP expression
-    | conditional
-    | LPAREN expression RPAREN
-    | atom
-    | execute
-;
-
-//Execute a function
-execute = VAR LPAREN {expression {COMMA expression}*}? RPAREN
-;
-
-conditional = expression COMP expression
-;
-
-atom = variable
-    | NUM
-    | BOOL
-    | pair
-;
-
-//pair definition
-pair = SLPAREN expression COMMA expression SRPAREN
-;
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The EBNF semantics can be seen in the parser.py file.
 
 Planned features:
   -Comments (// and /* */)
