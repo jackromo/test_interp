@@ -21,11 +21,14 @@ It can comprehend:
   -if statements
   -while loops
   -function definitions and calls
+  -special print(val) and input(val) functions
   -pairs, with car(p), cdr(p), p=setcar(p,newcar) and p=setcdr(p,newcdr) functions for pair 'p'.
 
 The EBNF semantics can be seen in the parser.py file.
 
+There is currently a noted issue in the language, where function calls must be in a statement.
+So, "print(5);" alone as a line is not sufficient. "x = print(5);"  must be done instead.
+
 Planned features:
   -Comments (// and /* */)
-  -Print() and input() functions
   -Multi-file programs (import <filename>) and libraries

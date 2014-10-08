@@ -152,8 +152,6 @@ def statement():
     sequence = [assign|donothing|ifstmt|whilestmt|define|returnstmt] statement
     ;
     """
-    temp = None
-
     if tok_ls.found(VAR):
         if(tok_ls.ls[tok_ls.i+1].typ == LPAREN):
             temp = define()

@@ -272,6 +272,8 @@ class Execute(object):
             elif self.name == "cdr": return Cdr(self.arg_ls[0])
             elif self.name == "setcar": return SetCar(self.arg_ls[0], self.arg_ls[1])
             elif self.name == "setcdr": return SetCdr(self.arg_ls[0], self.arg_ls[1])
+            if self.name == "print": return Print(self.arg_ls[0])
+            if self.name == "input": return Input(self.arg_ls[0])
             #Else, proceed as normal
             else:
                 body = environment[1][self.name]
@@ -369,6 +371,34 @@ class Return(object):
             environment[0]['_return_'] = self.val
             return (DoNothing(), environment)
 
+class Print(object):
+    """Call print() function on expression, print result."""
+    def __init__(self, val):
+        self.val = val
+    def to_str(self):
+        return "print(" + self.val.to_str() + ")"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        if(self.val.reducible()):
+            return Print(self.val.reduce(environment))
+        else:
+            print self.val.to_str()
+            return Number(0) #Print function returns number 0 to denote success
+
+class Input(object):
+    """Call input() function, print start, take input and reduce to result."""
+    def __init__(self, val):
+        self.val = val
+    def to_str(self):
+        return "input(" + self.val.to_str() + ")"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        if(self.val.reducible()):
+            return Input(self.val.reduce(environment))
+        else:
+            return String(raw_input(self.val.to_str()))
 
 # Define machine to run evaluator.########################
 
