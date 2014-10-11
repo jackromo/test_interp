@@ -22,6 +22,7 @@ It can comprehend:
   -while loops
   -function definitions and calls
     -closure supported and functions can be passed as variables
+    -currying
     -function scope
   -special print(val) and input(val) functions
   -pairs, with car(p), cdr(p), p=setcar(p,newcar) and p=setcdr(p,newcdr) functions for pair 'p'
@@ -31,9 +32,9 @@ The EBNF semantics can be seen in the parser.py file.
 
 Planned features:
   -Lambda expressions
-  -Currying
-  -Scope for if and while statements
+  -Scope for if and while statements (?)
   -Multi-file programs (import <filename>) and libraries
+  -Lists and map(), reduce() and filter() ops
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -70,6 +71,18 @@ g = f(2);  // g = function(a){return 2+a;};
 x = g(4);  // x = 6
 
 
+Currying is another supported feature.
+
+
+add = function(x,y){    // Example multi argument function
+  return x+y;
+};
+curried = curry(add);   // Curried version of 'add' function
+addfive = curried(5);
+print(addfive(6));      // Prints '11'
+
+
+Note how print(curry(add)(5)(6)); is not used, as the semantics of the language don't accept it for now.
 Pairs have several special functions.
 
 

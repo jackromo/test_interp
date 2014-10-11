@@ -76,18 +76,23 @@ class String(object):
         return self
 
 class Function(object):
-    """Function data type, non-reducible.
+    """Function data type.
+    Must get closure during reduce(), non-reducible after completed.
     Contains parameters and body."""
     def __init__(self, params, body):
         self.params = params #Names of all params, as strings
         self.body = body
         self.closure = {} #Current environment, remembered for closure
+        self.closure_defined = False #If closure is defined or not
     def to_str(self):
         return "function(" + ",".join(self.params) + ") {" + self.body.to_str() + "}"
     def reducible(self):
-        """Is considered as a data type (not instructions), so not reducible."""
-        return False
+        """If closure not set, must define closure during reduce(), so reducible.
+        Else, is considered as a data type, so not reducible."""
+        return not self.closure_defined
     def reduce(self, environment):
+        self.closure = copy.deepcopy(environment.get_top_scope())
+        self.closure_defined = True
         return self
 
 class Variable(object):
@@ -209,12 +214,6 @@ class Assign(object):
         if self.value.reducible():
             return (Assign(self.variable, self.value.reduce(environment)), environment)
         else:
-            #if making a function, allow for closure by copying environment
-            if isinstance(self.value, Function):
-                #copy all values in current scope into function's closure
-                new_vals = copy.deepcopy(environment.get_top_scope())
-                for n,v in new_vals.items():
-                    self.value.closure[n] = v
             environment.put(self.variable.name, self.value)
             return (DoNothing(), environment)
 
@@ -293,8 +292,9 @@ class Execute(object):
             elif self.name == "cdr": return Cdr(self.arg_ls[0])
             elif self.name == "setcar": return SetCar(self.arg_ls[0], self.arg_ls[1])
             elif self.name == "setcdr": return SetCdr(self.arg_ls[0], self.arg_ls[1])
-            if self.name == "print": return Print(self.arg_ls[0])
-            if self.name == "input": return Input(self.arg_ls[0])
+            elif self.name == "print": return Print(self.arg_ls[0])
+            elif self.name == "input": return Input(self.arg_ls[0])
+            elif self.name == "curry": return Curry(self.arg_ls[0])
             #Else, proceed as normal
             else:
                 #Functions have params, body attributes and closure, so access each
@@ -461,6 +461,41 @@ class Input(object):
             else:
                 #Print everything else (numbers, bools) normally
                 return String(raw_input(self.val.to_str()))
+
+class Curry(object):
+    """Return the curried version of a function.
+    eg. f = function(x,y){return x+y;};
+    This becomes f = function(x){ return function(y){return x+y;}; };
+    Rule: func(p1, p2, ..., pn){body}
+    -> func(p1){ return func(p2) { ... { return func(pn){ body } } ... } }"""
+    def __init__(self, func):
+        self.func = func
+    def to_str(self):
+        return "curry(" + self.func.to_str() + ")"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Reduces as follows:
+        1. Gather all params.
+        2. Create a function for each param, taking param as only parameter.
+        3. Put body into last param's function.
+        4. Starting at last param's function, put each func into prev param's func body.
+        5. Reduce to function remaining."""
+        if(self.func.reducible()):
+            return Curry(self.func.reduce(environment))
+        else:
+            temp_funcs = []
+            param_ls = self.func.params
+            for p in param_ls:
+                temp_funcs.append(Function(p, DoNothing()))
+            #Reverse list, since last param's func contains body
+            temp_funcs.reverse()
+            temp_funcs[0].body = self.func.body
+            #Put functions as return value of each other.
+            for i in range(1, len(temp_funcs)): #Don't access first function, since already set
+                temp_funcs[i].body = Return(temp_funcs[i-1])
+
+            return temp_funcs[len(temp_funcs)-1] #Result is last func, ie. first param's function
 
 
 # Define machine to run evaluator.########################
