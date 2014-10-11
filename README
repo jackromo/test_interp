@@ -21,14 +21,89 @@ It can comprehend:
   -if statements
   -while loops
   -function definitions and calls
+    -closure supported and functions can be passed as variables
+    -function scope
   -special print(val) and input(val) functions
-  -pairs, with car(p), cdr(p), p=setcar(p,newcar) and p=setcdr(p,newcdr) functions for pair 'p'.
+  -pairs, with car(p), cdr(p), p=setcar(p,newcar) and p=setcdr(p,newcdr) functions for pair 'p'
+  -comments (//comment\n)
 
 The EBNF semantics can be seen in the parser.py file.
 
-There is currently a noted issue in the language, where function calls must be in a statement.
-So, "print(5);" alone as a line is not sufficient. "x = print(5);"  must be done instead.
-
 Planned features:
-  -Comments (// and /* */)
+  -Lambda expressions
+  -Currying
+  -Scope for if and while statements
   -Multi-file programs (import <filename>) and libraries
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+The language is weakly typed, so variables can have any value at any time.
+
+
+x = 5;            // Integer
+x = "Hello";      // String
+x = false;        // Boolean
+x = [1, "hey!"];  // Pair (can take any data types as vals)
+
+
+Several operations and comparisons are supported: +, -, *, /, %, >, <, and ==.
+Functions are also considered a data type, so are assigend to variables.
+
+
+f = function(x,y){  // Function (indentation not necessary, can be on one line)
+  return x+y;
+};
+y = f(5,6);  // y = 11
+g = f;       // g can now be called as a function
+t = g(1,2);  // t = 3
+
+
+Closure is also supported.
+
+
+f = function(x){
+  return function(a){ return x+a; };
+};
+g = f(2);  // g = function(a){return 2+a;};
+x = g(4);  // x = 6
+
+
+Pairs have several special functions.
+
+
+p = [1, 2];             // Create pair
+x = car(p);             // x = 1
+y = cdr(p);             // y = 2
+a = setcar(p, false);   // a = [false, 2]  (does NOT alter p)
+b = setcdr(p, [2,3]);   // b = [1, [2, 3]] (does NOT alter p)
+
+
+For input and output, print() and input() can be used.
+
+
+print(5);                       // Print out value 5
+x = function(x){return x+1};
+print(x);                       // Print out function
+y = input("Type something: ")   // print out "Type something: ", y = whatever is typed
+
+
+For control flow, if statements and while loops are available.
+
+
+x = 5;
+
+if(x>0) then {
+  print("x is big");
+} else {
+  print("x is nothing");
+}
+
+while(x > 0) {
+  x = x-1;
+  print("x is " + x);  // NB: strings and other data types can be concatenated.
+}
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

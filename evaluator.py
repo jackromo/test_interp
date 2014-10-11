@@ -1,9 +1,26 @@
 import operator
 import copy
 
-#Small step semantics interpreter.
+# Small step semantics interpreter.
+# Every possible term or combination of terms has a reduce() method.
+# This method reduces every term by one 'step'. A compound term may reduce its subterms in this method.
+# The main driver code - or machine - iterates over the reduce() method until the program is nonreducible.
+# The reduce() method calls may alter the environment, eg. during an assign reduce.
+
 
 # Data types #####################################
+
+
+class Null(object):
+    """Null data type, ie. None in python. Non reducible."""
+    def __init__(self):
+        pass
+    def to_str(self):
+        return "Null"
+    def reducible(self):
+        return False
+    def reduce(self):
+        return self
 
 class Number(object):
     """Number class. Non reducible."""
@@ -58,6 +75,42 @@ class String(object):
     def reduce(self, environment):
         return self
 
+class Function(object):
+    """Function data type, non-reducible.
+    Contains parameters and body."""
+    def __init__(self, params, body):
+        self.params = params #Names of all params, as strings
+        self.body = body
+        self.closure = {} #Current environment, remembered for closure
+    def to_str(self):
+        return "function(" + ",".join(self.params) + ") {" + self.body.to_str() + "}"
+    def reducible(self):
+        """Is considered as a data type (not instructions), so not reducible."""
+        return False
+    def reduce(self, environment):
+        return self
+
+class Variable(object):
+    """Variable. Reduces to variable's value."""
+    def __init__(self, name):
+        self.name = name
+    def to_str(self):
+        return str(self.name)
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Look up value, reduce to that."""
+        if environment.contains(self.name):
+            return environment.get(self.name)
+        else:
+            return None
+
+
+# Compound terms #################################
+# Include add, multiply, less than, greater than, equal to.
+# Each is a collection of multiple terms.
+
+
 def get_op(op):
     """Get operator function from string."""
     return {"+": operator.add,
@@ -70,10 +123,6 @@ def get_op(op):
             "==": operator.eq,
             "!=": operator.ne
             }[op]
-
-# Compound terms #################################
-# Include add, multiply, less than, greater than, equal to.
-# Each is a collection of multiple terms.
 
 class Op(object):
     """Operation (+-*/%), returns number."""
@@ -129,28 +178,10 @@ class Comp(object):
             return Boolean(get_op(self.op)(self.first.val, self.second.val))
 
 
-#######################################################
-
-class Variable(object):
-    """Variable. Reduces to variable's value."""
-    def __init__(self, name):
-        self.name = name
-    def to_str(self):
-        return str(self.name)
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        """Look up value, reduce to that."""
-        if environment[0][self.name]:
-            return environment[0][self.name]
-        elif environment[1][self.name]:
-            return environment[1][self.name]
-        else:
-            return None
-
 # Statements ##########################################
 # Statements include assignments, if-else, sequences, and null statement.
 # Reduce() method returns tuple of expression and environment; environment can be modified.
+
 
 class DoNothing(object):
     """Empty statement. Non reducible."""
@@ -178,11 +209,18 @@ class Assign(object):
         if self.value.reducible():
             return (Assign(self.variable, self.value.reduce(environment)), environment)
         else:
-            environment[0][self.variable.to_str()] = self.value
+            #if making a function, allow for closure by copying environment
+            if isinstance(self.value, Function):
+                #copy all values in current scope into function's closure
+                new_vals = copy.deepcopy(environment.get_top_scope())
+                for n,v in new_vals.items():
+                    self.value.closure[n] = v
+            environment.put(self.variable.name, self.value)
             return (DoNothing(), environment)
 
 class Sequence(object):
-    """Sequence of two statements. If first reduces, reduce it; if not, reduce to second statement."""
+    """Sequence of two statements.
+    If first reduces, reduce it; if not, reduce to second statement."""
     def __init__(self, first, second):
         self.first = first
         self.second = second
@@ -234,23 +272,6 @@ class While(object):
         # This stops reduction of body outside of while loop changing next while loop.
         return (If(self.condition, Sequence(copy.deepcopy(self.body), self), DoNothing()), environment)
 
-class Define(object):
-    """Function definition."""
-    def __init__(self, name, arg_ls, body):
-        self.name = name
-        self.arg_ls = arg_ls #List of strings, each is name of each arg.
-        self.body = body  #Function body. Do NOT reduce.
-    def to_str(self):
-        return self.name + "(" + ",".join(self.arg_ls) + ") = {" + self.body.to_str() + "}"
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        """Do not reduce body.
-        Functions are stored as tuple of parameters and body.
-        They are stored in second dict in environment, for functions only."""
-        environment[1][self.name] = [self.arg_ls, self.body]
-        return (DoNothing(), environment)
-
 class Execute(object):
     """Function call. Contains arguments supplied and name of called function."""
     def __init__(self, name, arg_ls):
@@ -276,17 +297,46 @@ class Execute(object):
             if self.name == "input": return Input(self.arg_ls[0])
             #Else, proceed as normal
             else:
-                body = environment[1][self.name]
-                temp_env = copy.deepcopy(environment)
+                #Functions have params, body attributes and closure, so access each
+                params = environment.get(self.name).params
+                body = environment.get(self.name).body
+                closure = environment.get(self.name).closure
+                #Make temporary scope to run function in
+                func_scope = {}
+                #Copy over environment into scope for closure
+                for name,val in closure.items(): func_scope[name] = val
+                #Put params into top scope as variables with args as values
                 for i in range(len(self.arg_ls)):
-                    #Set function parameters as temporary variables.
-                    #Remember that function val is stored as tuple of params and body.
-                    #Thus, temp_env[1][self.name][0][i] accesses i-th param name of function.
-                    temp_env[0][temp_env[1][self.name][0][i]] = self.arg_ls[i]
-                temp_env[0]["_return_"] = Number(0) #Set return value of function to 0 by default.
-                #Make machine to run function body separately. Give function body and temp_env.
-                temp_mach = Machine(temp_env[1][self.name][1], temp_env)
-                return temp_mach.run()[0]["_return_"] #Run function. Return value of '_return_' variable.
+                    #Insert variables of param names with argument values for function
+                    func_scope[params[i]] = self.arg_ls[i]
+                #Return value stored as special var, reduce func to it
+                func_scope["_return_"] = Null()
+                #Push new scope to environment
+                environment.push_scope(func_scope)
+                temp_mach = Machine(body, environment)
+                #Run function and return value of _return_ variable
+                result = temp_mach.run().get("_return_")
+                environment.pop_scope()
+                return result
+
+class ExecStmt(object):
+    """If a function is called alone, eg. 'print(5);', must be considered as a statement.
+    ie. must return self and environment."""
+    def __init__(self, expr):
+        self.expr = expr
+    def to_str(self):
+        return self.expr.to_str() + ";"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Reduce statement before, then check.
+        This means it cannot return a nonreducible value as a statement.
+        eg. 'f(5)'; does not reduce to '5;', then 'do_nothing;' - goes straight to 'do_nothing;'."""
+        result = self.expr.reduce(environment)
+        if result.reducible():
+            return (ExecStmt(result), environment)
+        else:
+            return (DoNothing(), environment)
 
 
 # Predefined functions and statements ##################
@@ -368,7 +418,7 @@ class Return(object):
         if self.val.reducible():
             return (Return(self.val.reduce(environment)), environment)
         else:
-            environment[0]['_return_'] = self.val
+            environment.put('_return_', self.val)
             return (DoNothing(), environment)
 
 class Print(object):
@@ -380,10 +430,16 @@ class Print(object):
     def reducible(self):
         return True
     def reduce(self, environment):
-        if(self.val.reducible()):
+        if self.val.reducible():
             return Print(self.val.reduce(environment))
         else:
-            print self.val.to_str()
+            if isinstance(self.val, String):
+                #If a string, cut off quotation marks on sides when printing
+                string = self.val.to_str()
+                print string[1:len(string)-1]
+            else:
+                #Print everything else (numbers, bools) normally
+                print self.val.to_str()
             return Number(0) #Print function returns number 0 to denote success
 
 class Input(object):
@@ -395,10 +451,17 @@ class Input(object):
     def reducible(self):
         return True
     def reduce(self, environment):
-        if(self.val.reducible()):
+        if self.val.reducible():
             return Input(self.val.reduce(environment))
         else:
-            return String(raw_input(self.val.to_str()))
+            if isinstance(self.val, String):
+                #If a string, cut off quotation marks on sides when printing
+                string = self.val.to_str()
+                return String(raw_input(string[1:len(string)-1]))
+            else:
+                #Print everything else (numbers, bools) normally
+                return String(raw_input(self.val.to_str()))
+
 
 # Define machine to run evaluator.########################
 
@@ -407,25 +470,104 @@ class Machine(object):
     """Reduces and executes small-step semantics of AST from parser."""
     def __init__(self, expression, environment):
         self.expression = expression
-        self.environment = environment #Environment is a list of two dicts, for vars and funcs.
+        #Environment is a list of two dicts, for vars and funcs.
+        self.environment = environment
         self.i = 0 #Current step
     def step(self):
-        #Create string of dict of variables to print environment
-        var_str = "[" + ", ".join([x[0] + ":" + x[1].to_str() for x in self.environment[0].items()]) + "]"
-        fnc_str = "[" + ", ".join([x[0] + ":" + x[1][1].to_str() for x in self.environment[1].items()]) + "]"
-        state_str = self.expression.to_str() + " " + var_str + " " + fnc_str
+        #Decide indentation for printing to depict current scope.
+        indent = "  "*self.environment.get_scope_size()
+        #Create string to print environment
+        env_str = "[" + ", ".join([x[0] + ":" + x[1].to_str() for x in self.environment.get_dict().items()]) + "]"
+        state_str = self.expression.to_str() + "\n" + indent + "  | vars: " + env_str
         #Print current state, comment out to turn off printing state
-        print str(self.i+1) + " | " + state_str
+        print indent + str(self.i+1) + " | " + state_str + "\n"
         #Increment i to signify step has been taken.
         self.i += 1
         #Reduce expression and update environment.
         self.expression, self.environment = self.expression.reduce(self.environment)
     def run(self):
         while self.expression.reducible():
+            #If _return_ is defined, stop evaluatingi because function has returned
+            if self.environment.contains("_return_"):
+                if not isinstance(self.environment.get("_return_"), Null): break
             self.step()
         self.step() #Display last, non-reducible statement (should be DoNothing)
         return self.environment
 
+
+#class MachStack(object):
+#    """Interpreted program functions as stack of machines.
+#    When a function is called, new machine pushed onto stack.
+#    Uppermost machine is run.
+#    When uppermost machine is nonreducible, pop and run next one."""
+#    def __init__(self):
+#        self.stack = []
+#        self.top = None
+#    def step_top(self):
+#        """Step topmost machine."""
+#        self.top.step()
+#    def pop(self):
+#        self.stack = self.stack[0: len(self.stack)-2]
+#        self.top = self.stack[len(self.stack)-1]
+#    def push(self, mach):
+#        self.stack.append(mach)
+#        self.top = mach
+#    def run(self):
+#        while len(self.stack) > 0:
+#            self.step_top()
+#    def get_flat_env(self):
+#        """Get all environments as a flat dict."""
+#        result = {}
+#        #Order of environments evaluated is important.
+#        #Val of var w/ highest scope overrides others.
+#        for x in self.stack:
+#            for name,val in x.environment.val.items():
+#                result[name] = val
+#        return Environment(result)
+
+
+# Define environment for program to run within. ############
+
+
+class Environment(object):
+    """Environment for code to run within.
+    Is a stack of dictionaries, each representing a scope.
+    Dictionaries are of names and values. Values can be functions, numbers, etc.
+    Scope can contain a _return_ value, holds val of return in function."""
+    def __init__(self, val={}):
+        self.stack = []
+        self.stack.append(val)
+    def get_dict(self):
+        """Return flat dictionary of all names and vals.
+        Higher scopes override lower ones."""
+        result = {}
+        for x in self.stack:
+            #Append lower scope first so higher scopes override it later
+            for name,val in x.items():
+                result[name] = val
+        return result
+    def get(self, name):
+        """Get value by name in dictonary."""
+        return self.get_dict()[name]
+    def put(self, name, value):
+        """Put value with name and value into highest scope, ie. last in stack list."""
+        self.stack[len(self.stack)-1][name] = value
+    def contains(self, name):
+        """Return True if environment contains name, False if not."""
+        return self.get_dict().has_key(name)
+    def push_scope(self, scope={}):
+        """Create new scope level."""
+        self.stack.append(scope)
+    def pop_scope(self):
+        """Go down one scope level, remove old highest one."""
+        self.stack = self.stack[:len(self.stack)-1]
+    def get_top_scope(self):
+        """Return dictionary of top scope."""
+        return self.stack[len(self.stack)-1]
+    def get_scope_size(self):
+        """Return number of scopes, ie. stack size.
+        Used to decide indentation when printing state of machine."""
+        return len(self.stack)
 
 ########################################################
 #Test code.

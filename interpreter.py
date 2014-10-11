@@ -3,8 +3,11 @@ import parser
 import evaluator
 import sys
 
+
 # Driver code for entire interpreter.
 # Uses lexer, parser and evaluator to interpret input code.
+
+
 
 def interpret(program):
     """Interpreter function.
@@ -12,7 +15,7 @@ def interpret(program):
     lxr = lexer.Lexer(program)
     prsr = parser.Parser(lxr.lex())
     #Machine is passed an environment, which is a list of two dicts. One holds vars, the other funcs.
-    mach = evaluator.Machine(prsr.run(), [{}, {}])
+    mach = evaluator.Machine(prsr.run(), evaluator.Environment())
     mach.run()
 
 if(len(sys.argv) > 1):

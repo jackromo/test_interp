@@ -26,3 +26,4 @@ RETURN = 18 #return keyword for function returns
 SLPAREN = 19 #square left parenthesis ([)
 SRPAREN = 20 #square right parenthesis (])
 STR = 21 #string (difference from var identified by lexer)
+FUNCTION = 22 #used for lambda functions (eg. function(x){return x+1;})
