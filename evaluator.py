@@ -338,6 +338,44 @@ class ExecStmt(object):
         else:
             return (DoNothing(), environment)
 
+class Return(object):
+    """Return statement in a function. eg. return 5"""
+    def __init__(self, val):
+        self.val = val
+    def to_str(self):
+        return "return " + self.val.to_str()
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Set _return_ variable to value of expression."""
+        if self.val.reducible():
+            return (Return(self.val.reduce(environment)), environment)
+        else:
+            environment.put('_return_', self.val)
+            return (DoNothing(), environment)
+
+class Import(object):
+    """Import a file - essentially run it and copy environment."""
+    def __init__(self, filename):
+        self.filename = filename
+    def to_str(self):
+        return "import " + self.filename
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Open and run file of name 'filename'.
+        Concatenate environment created by evaluating imported file
+        with own environment's top scope.
+        Any conflicting names are overriden by import."""
+        from interpreter import file_interp
+        #Run imported file. Get environment created.
+        import_env = file_interp(self.filename)
+        #Get dict of environment to concatenate with own top scope.
+        import_scope = import_env.get_dict()
+        #Concatenate dicts together.
+        environment.get_top_scope().update(import_scope)
+        return (DoNothing(), environment)
+
 
 # Predefined functions and statements ##################
 #Includes return, car(), cdr, setcar(), setcdr(), etc.
@@ -404,22 +442,6 @@ class SetCdr(object):
             return SetCar(self.pair, self.new.reduce(environment))
         else:
             return Pair(self.pair.car, self.new)
-
-class Return(object):
-    """Return statement in a function. eg. return 5"""
-    def __init__(self, val):
-        self.val = val
-    def to_str(self):
-        return "return " + self.val.to_str()
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        """Set _return_ variable to value of expression."""
-        if self.val.reducible():
-            return (Return(self.val.reduce(environment)), environment)
-        else:
-            environment.put('_return_', self.val)
-            return (DoNothing(), environment)
 
 class Print(object):
     """Call print() function on expression, print result."""

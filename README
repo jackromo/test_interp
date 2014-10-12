@@ -35,6 +35,12 @@ Planned features:
   -Scope for if and while statements (?)
   -Multi-file programs (import <filename>) and libraries
   -Lists and map(), reduce() and filter() ops
+  -Greater type functionality
+    -Strong typing
+    -Type declarations for functions (?)
+    -Structures, unions, enumerations
+    -Classes and objects
+  -Lazy evaluation
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

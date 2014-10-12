@@ -17,6 +17,7 @@ import sys
 #     | whilestmt       //While loop.
 #     | returnstmt      //Return a value in function body.
 #     | execstmt        //Execute a function on its own line.
+#     | importstmt      //Import a file.
 # ;
 #
 # sequence = [assign|donothing|ifstmt|whilestmt|returnstmt|execstmt] statement
@@ -40,6 +41,10 @@ import sys
 # ;
 #
 # returnstmt = RETURN expression EOL
+# ;
+#
+# //eg. import "test.xx";
+# importstmt = IMPORT STR EOL
 # ;
 #
 # variable = VAR
@@ -157,6 +162,7 @@ def statement():
         | whilestmt
         | returnstmt
         | execstmt
+        | importstmt
     ;
 
     sequence = [assign|donothing|ifstmt|whilestmt|returnstmt|execstmt] statement
@@ -184,6 +190,7 @@ def statement():
     elif tok_ls.found(IF):    temp = ifstmt()
     elif tok_ls.found(WHILE): temp = whilestmt()
     elif tok_ls.found(RETURN): temp = returnstmt()
+    elif tok_ls.found(IMPORT): temp = importstmt()
     else:
         error("Expected VAR, NULL or IF but found " + str(token.val))
 
@@ -254,6 +261,19 @@ def donothing():
     tok_ls.consume(EOL)
     return DoNothing()
 
+def importstmt():
+    """
+    importstmt = IMPORT STR EOL
+    ;
+    """
+    global token
+
+    tok_ls.consume(IMPORT)
+    fname = token.val #string
+    tok_ls.consume(STR)
+    tok_ls.consume(EOL)
+    return Import(fname)
+
 def variable():
     """
     variable = VAR
@@ -262,6 +282,7 @@ def variable():
     global token
     #current token is VAR
     result = Variable(token.val)
+
     return result
 
 def expression():
@@ -316,6 +337,7 @@ def atom():
     atom = variable
         | BOOL
         | NUM
+        | STR
         | pair
     ;
     """
