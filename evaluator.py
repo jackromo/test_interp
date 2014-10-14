@@ -64,6 +64,21 @@ class Pair(object):
         else:
             return self
 
+class List(object):
+    """List of values. Non reducible if all elements are non reducible."""
+    def __init__(self, ls):
+        self.ls = ls
+    def to_str(self):
+        return "[" + ",".join([x.to_str() for x in self.ls]) + "]"
+    def reducible(self):
+        return any([x.reducible() for x in self.ls])
+    def reduce(self, environment):
+        """Reduce all elements if any are reducible. Else, return self."""
+        if any([x.reducible() for x in self.ls]):
+            return List([x.reduce(environment) for x in self.ls])
+        else:
+            return self
+
 class String(object):
     """String data type, non-reducible."""
     def __init__(self, val):
@@ -288,13 +303,15 @@ class Execute(object):
             return Execute(self.name, [x.reduce(environment) for x in self.arg_ls])
         else:
             #Check if predefined function
-            if self.name == "car": return Car(self.arg_ls[0])
-            elif self.name == "cdr": return Cdr(self.arg_ls[0])
-            elif self.name == "setcar": return SetCar(self.arg_ls[0], self.arg_ls[1])
-            elif self.name == "setcdr": return SetCdr(self.arg_ls[0], self.arg_ls[1])
-            elif self.name == "print": return Print(self.arg_ls[0])
-            elif self.name == "input": return Input(self.arg_ls[0])
-            elif self.name == "curry": return Curry(self.arg_ls[0])
+            if self.name == "car": return PredefFuncs.carReduce(self.arg_ls[0])
+            elif self.name == "cdr": return PredefFuncs.cdrReduce(self.arg_ls[0])
+            elif self.name == "setcar": return PredefFuncs.setCarReduce(self.arg_ls[0], self.arg_ls[1])
+            elif self.name == "setcdr": return PredefFuncs.setCdrReduce(self.arg_ls[0], self.arg_ls[1])
+            elif self.name == "print": return PredefFuncs.printReduce(self.arg_ls[0])
+            elif self.name == "input": return PredefFuncs.inputReduce(self.arg_ls[0])
+            elif self.name == "curry": return PredefFuncs.curryReduce(self.arg_ls[0])
+            elif self.name == "elem": return PredefFuncs.elemReduce(self.arg_ls[0], self.arg_ls[1])
+            elif self.name == "setelem": return PredefFuncs.setElemReduce(self.arg_ls[0], self.arg_ls[1], self.arg_ls[2])
             #Else, proceed as normal
             else:
                 #Functions have params, body attributes and closure, so access each
@@ -381,143 +398,92 @@ class Import(object):
 #Includes return, car(), cdr, setcar(), setcdr(), etc.
 
 
-class Car(object):
-    """Call car() function on pair, returns car value."""
-    def __init__(self, pair):
-        self.pair = pair
-    def to_str(self):
-        return "car(" + self.pair.to_str() + ")"
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        if self.pair.reducible():
-            return Car(self.pair.reduce(environment))
-        else:
-            return self.pair.car
+class PredefFuncs(object):
+    """Container for all predefined functions and their reduce() methods."""
 
-class Cdr(object):
-    """Call cdr() function on pair, returns cdr value."""
-    def __init__(self, pair):
-        self.pair = pair
-    def to_str(self):
-        return "cdr(" + self.pair.to_str() + ")"
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        if self.pair.reducible():
-            return Cdr(self.pair.reduce(environment))
-        else:
-            return self.pair.cdr
+    @staticmethod
+    def elemReduce(ls, index):
+        """Call elem() function on list, return element of specific index in list.
+        Equivalent to ls[i] in Python."""
+        return ls.ls[index.val]
 
-class SetCar(object):
-    """Call setcar() function on pair, returns pair with new car."""
-    def __init__(self, pair, new):
-        self.pair = pair
-        self.new = new
-    def to_str(self):
-        return "setcar(" + self.pair.to_str() + "," + self.new.to_str() + ")"
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        if self.pair.reducible():
-            return SetCar(self.pair.reduce(environment), self.new)
-        elif self.new.reducible():
-            return SetCar(self.pair, self.new.reduce(environment))
-        else:
-            return Pair(self.new, self.pair.cdr)
+    @staticmethod
+    def setElemReduce(ls, index, new_val):
+        """Call setelem() function on list, return list with modified element at index.
+        Equivalent to ls[i] = new_val in Python."""
+        ls_new = copy.deepcopy(ls.ls)
+        ls_new[index.val] = new_val
+        return List(ls_new)
 
-class SetCdr(object):
-    """Call setcdr() function on pair, returns pair with new cdr."""
-    def __init__(self, pair, new):
-        self.pair = pair
-        self.new = new
-    def to_str(self):
-        return "setcdr(" + self.pair.to_str() + "," + self.new.to_str() + ")"
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        if self.pair.reducible():
-            return SetCar(self.pair.reduce(environment), self.new)
-        elif self.new.reducible():
-            return SetCar(self.pair, self.new.reduce(environment))
-        else:
-            return Pair(self.pair.car, self.new)
+    @staticmethod
+    def carReduce(pair):
+        """Call car() function on pair, returns car value."""
+        return pair.car
 
-class Print(object):
-    """Call print() function on expression, print result."""
-    def __init__(self, val):
-        self.val = val
-    def to_str(self):
-        return "print(" + self.val.to_str() + ")"
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        if self.val.reducible():
-            return Print(self.val.reduce(environment))
-        else:
-            if isinstance(self.val, String):
-                #If a string, cut off quotation marks on sides when printing
-                string = self.val.to_str()
-                print string[1:len(string)-1]
-            else:
-                #Print everything else (numbers, bools) normally
-                print self.val.to_str()
-            return Number(0) #Print function returns number 0 to denote success
+    @staticmethod
+    def cdrReduce(pair):
+        """Call cdr() function on pair, returns cdr value."""
+        return pair.cdr
 
-class Input(object):
-    """Call input() function, print start, take input and reduce to result."""
-    def __init__(self, val):
-        self.val = val
-    def to_str(self):
-        return "input(" + self.val.to_str() + ")"
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        if self.val.reducible():
-            return Input(self.val.reduce(environment))
-        else:
-            if isinstance(self.val, String):
-                #If a string, cut off quotation marks on sides when printing
-                string = self.val.to_str()
-                return String(raw_input(string[1:len(string)-1]))
-            else:
-                #Print everything else (numbers, bools) normally
-                return String(raw_input(self.val.to_str()))
+    @staticmethod
+    def setCarReduce(pair, new):
+        """Call setcar() function on pair, returns pair with new car."""
+        return Pair(new, pair.cdr)
 
-class Curry(object):
-    """Return the curried version of a function.
-    eg. f = function(x,y){return x+y;};
-    This becomes f = function(x){ return function(y){return x+y;}; };
-    Rule: func(p1, p2, ..., pn){body}
-    -> func(p1){ return func(p2) { ... { return func(pn){ body } } ... } }"""
-    def __init__(self, func):
-        self.func = func
-    def to_str(self):
-        return "curry(" + self.func.to_str() + ")"
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        """Reduces as follows:
+    @staticmethod
+    def setCdrReduce(pair, new):
+        """Call setcdr() function on pair, returns pair with new cdr."""
+        return Pair(pair.car, new)
+
+    @staticmethod
+    def printReduce(val):
+        """Call print() function on expression, print result."""
+        if isinstance(val, String):
+            #If a string, cut off quotation marks on sides when printing
+            string = val.to_str()
+            print string[1:len(string)-1]
+        else:
+            #Print everything else (numbers, bools) normally
+            print val.to_str()
+        return Number(0) #Print function returns number 0 to denote success
+
+    @staticmethod
+    def inputReduce(val):
+        """Call input() function, print start, take input and reduce to result."""
+        if isinstance(val, String):
+            #If a string, cut off quotation marks on sides when printing
+            string = val.to_str()
+            return String(raw_input(string[1:len(string)-1]))
+        else:
+            #Print everything else (numbers, bools) normally
+            return String(raw_input(val.to_str()))
+
+    @staticmethod
+    def curryReduce(func):
+        """Return the curried version of a function.
+        eg. f = function(x,y){return x+y;};
+        This becomes f = function(x){ return function(y){return x+y;}; };
+        Rule: func(p1, p2, ..., pn){body}
+        -> func(p1){ return func(p2) { ... { return func(pn){ body } } ... } }
+
+        Reduces as follows:
         1. Gather all params.
         2. Create a function for each param, taking param as only parameter.
         3. Put body into last param's function.
         4. Starting at last param's function, put each func into prev param's func body.
         5. Reduce to function remaining."""
-        if(self.func.reducible()):
-            return Curry(self.func.reduce(environment))
-        else:
-            temp_funcs = []
-            param_ls = self.func.params
-            for p in param_ls:
-                temp_funcs.append(Function(p, DoNothing()))
-            #Reverse list, since last param's func contains body
-            temp_funcs.reverse()
-            temp_funcs[0].body = self.func.body
-            #Put functions as return value of each other.
-            for i in range(1, len(temp_funcs)): #Don't access first function, since already set
-                temp_funcs[i].body = Return(temp_funcs[i-1])
+        temp_funcs = []
+        param_ls = func.params
+        for p in param_ls:
+            temp_funcs.append(Function(p, DoNothing()))
+        #Reverse list, since last param's func contains body
+        temp_funcs.reverse()
+        temp_funcs[0].body = func.body
+        #Put functions as return value of each other.
+        for i in range(1, len(temp_funcs)): #Don't access first function, since already set
+            temp_funcs[i].body = Return(temp_funcs[i-1])
 
-            return temp_funcs[len(temp_funcs)-1] #Result is last func, ie. first param's function
+        return temp_funcs[len(temp_funcs)-1] #Result is last func, ie. first param's function
 
 
 # Define machine to run evaluator.########################

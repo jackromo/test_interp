@@ -27,6 +27,7 @@ It can comprehend:
   -special print(val) and input(val) functions
   -pairs, with car(p), cdr(p), p=setcar(p,newcar) and p=setcdr(p,newcdr) functions for pair 'p'
   -comments (//comment\n)
+  -lists, with elem() and setelem()
 
 The EBNF semantics can be seen in the parser.py file.
 
@@ -34,14 +35,13 @@ Planned features:
   -Lambda expressions
   -Scope for if and while statements (?)
   -Multi-file programs (import <filename>) and libraries
-  -Lists and map(), reduce() and filter() ops
   -Greater type functionality
     -Strong typing
     -Type declarations for functions (?)
     -Structures, unions, enumerations
     -Classes and objects
   -Lazy evaluation
-
+  -Streams
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

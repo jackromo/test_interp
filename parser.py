@@ -71,10 +71,15 @@ import sys
 #     | BOOL
 #     | STR
 #     | pair
+#     | list
+# ;
+#
+# //Define a list
+# list = SLPAREN {expression {COMMA expression}*}? SRPAREN
 # ;
 #
 # //Define a pair
-# pair = SLPAREN expression COMMA expression SRPAREN
+# pair = PAIR SLPAREN expression COMMA expression SRPAREN
 # ;
 #
 
@@ -305,7 +310,7 @@ def expression():
         result = expression()
         tok_ls.consume(RPAREN)
         return result
-    elif tok_ls.foundOneOf([NUM, BOOL, VAR, SLPAREN, STR]):
+    elif tok_ls.foundOneOf([NUM, BOOL, VAR, PAIR, STR, SLPAREN]):
         start = atom()
         tok_ls.getToken()
         if tok_ls.found(LPAREN): #execute
@@ -339,6 +344,7 @@ def atom():
         | NUM
         | STR
         | pair
+        | list
     ;
     """
     global token
@@ -347,22 +353,40 @@ def atom():
     elif tok_ls.found(BOOL): atom = Boolean(token.val)
     elif tok_ls.found(VAR): atom = variable()
     elif tok_ls.found(STR): atom = String(token.val)
-    elif tok_ls.found(SLPAREN): atom = pair()
+    elif tok_ls.found(PAIR): atom = pair()
+    elif tok_ls.found(SLPAREN): atom = listexpr()
     return atom
 
 def pair():
     """
-    pair = SLPAREN expression COMMA expression SRPAREN
+    pair = PAIR SLPAREN expression COMMA expression SRPAREN
     ;
     """
     global token
 
+    tok_ls.consume(PAIR)
     tok_ls.consume(SLPAREN)
     car = expression()
     tok_ls.consume(COMMA)
     cdr = expression()
     #Don't consume last SRPAREN, consumed in getToken() call in expression()
     return Pair(car, cdr)
+
+def listexpr():
+    """
+    list = SLPAREN {expression {COMMA expression}*}? SRPAREN
+    ;
+    """
+    global token
+
+    tok_ls.consume(SLPAREN)
+    args = []
+    while not tok_ls.found(SRPAREN):
+        args.append(expression())
+        if tok_ls.found(COMMA): tok_ls.consume(COMMA)
+        else: break
+    #Don't consume last SRPAREN, consumed in getToken() call in expression()
+    return List(args)
 
 def function():
     """

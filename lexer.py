@@ -42,6 +42,7 @@ class Lexer(object):
         elif re.search('return', item): return Token(RETURN, item)
         elif re.search('function', item): return Token(FUNCTION, item)
         elif re.search('import', item): return Token(IMPORT, item)
+        elif re.search('pair', item): return Token(PAIR, item)
         elif re.search('true', item): return Token(BOOL, True)
         elif re.search('false', item): return Token(BOOL, False)
         elif re.search('(==|<|>|!=)', item): return Token(COMP, item)
