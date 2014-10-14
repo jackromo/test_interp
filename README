@@ -27,6 +27,7 @@ It can comprehend:
   -special print(val) and input(val) functions
   -pairs, with car(p), cdr(p), p=setcar(p,newcar) and p=setcdr(p,newcdr) functions for pair 'p'
   -comments (//comment\n)
+  -Multi-file programs (import <filename>) and libraries
   -lists, with elem() and setelem()
 
 The EBNF semantics can be seen in the parser.py file.
@@ -34,7 +35,6 @@ The EBNF semantics can be seen in the parser.py file.
 Planned features:
   -Lambda expressions
   -Scope for if and while statements (?)
-  -Multi-file programs (import <filename>) and libraries
   -Greater type functionality
     -Strong typing
     -Type declarations for functions (?)
@@ -89,14 +89,18 @@ print(addfive(6));      // Prints '11'
 
 
 Note how print(curry(add)(5)(6)); is not used, as the semantics of the language don't accept it for now.
-Pairs have several special functions.
+Pairs and lists have several special functions.
 
 
-p = [1, 2];             // Create pair
+p = pair[1, 2];         // Create pair
 x = car(p);             // x = 1
 y = cdr(p);             // y = 2
 a = setcar(p, false);   // a = [false, 2]  (does NOT alter p)
 b = setcdr(p, [2,3]);   // b = [1, [2, 3]] (does NOT alter p)
+
+l = [1,2,3,4];          // Create list
+x = elem(l, 0);         // x = 0th element of l
+m = setelem(l, 1, "j"); // m = [1, "j", 3, 4] (setelem(list, index, new_value))
 
 
 For input and output, print() and input() can be used.
@@ -123,6 +127,13 @@ while(x > 0) {
   x = x-1;
   print("x is " + x);  // NB: strings and other data types can be concatenated.
 }
+
+
+Programs can be split between multiple files; simply use the 'import' keyword.
+All this does is run the specified file, and add any values defined by the execution to the environment.
+
+import "hello";       //Import the file "hello"; hello contains "x=4;" in this example.
+print(x);             //print(4);
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
