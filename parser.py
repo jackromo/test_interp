@@ -173,21 +173,12 @@ def statement():
     sequence = [assign|donothing|ifstmt|whilestmt|returnstmt|execstmt] statement
     ;
 
-    execstmt = VAR LPAREN {expression {COMMA expression}*}? RPAREN EOL
+    execstmt = execute EOL
     ;
     """
     if tok_ls.found(VAR):
         if(tok_ls.ls[tok_ls.i+1].typ == LPAREN): #must be execute
-            start = variable() #Pretend is a variable to grab name of function
-            tok_ls.consume(VAR)
-            tok_ls.consume(LPAREN)
-            args = [] #Arguments for function, can be expressions
-            while not tok_ls.found(RPAREN):
-                args.append(expression())
-                if tok_ls.found(COMMA): tok_ls.consume(COMMA)
-                else: break
-            tok_ls.consume(RPAREN)
-            temp = ExecStmt(Execute(start.name, args)) #Only start.name is used because not a variable
+            temp = ExecStmt(execute())
             tok_ls.consume(EOL)
         else:
             temp = assign()
@@ -240,7 +231,6 @@ def assign():
     ;
     """
     var = variable()
-    tok_ls.consume(VAR)
     tok_ls.consume(ASGN)
     expr = expression()
     tok_ls.consume(EOL)
@@ -287,7 +277,7 @@ def variable():
     global token
     #current token is VAR
     result = Variable(token.val)
-
+    tok_ls.consume(VAR)
     return result
 
 def expression():
@@ -311,18 +301,10 @@ def expression():
         tok_ls.consume(RPAREN)
         return result
     elif tok_ls.foundOneOf([NUM, BOOL, VAR, PAIR, STR, SLPAREN]):
-        start = atom()
-        tok_ls.getToken()
-        if tok_ls.found(LPAREN): #execute
-            #Set start to be an execute, will be [atom|execute] in rules above
-            tok_ls.consume(LPAREN)
-            args = []
-            while not tok_ls.found(RPAREN):
-                args.append(expression())
-                if tok_ls.found(COMMA): tok_ls.consume(COMMA)
-                else: break
-            tok_ls.consume(RPAREN)
-            start = Execute(start.name, args)
+        if tok_ls.found(VAR) and tok_ls.ls[tok_ls.i+1].typ == LPAREN:
+            start = execute()
+        else:
+            start = atom()
         if tok_ls.found(OP): #[atom|execute] OP expression
             oper = token.val
             tok_ls.consume(OP)
@@ -349,12 +331,21 @@ def atom():
     """
     global token
 
-    if tok_ls.found(NUM): atom = Number(token.val)
-    elif tok_ls.found(BOOL): atom = Boolean(token.val)
-    elif tok_ls.found(VAR): atom = variable()
-    elif tok_ls.found(STR): atom = String(token.val)
-    elif tok_ls.found(PAIR): atom = pair()
-    elif tok_ls.found(SLPAREN): atom = listexpr()
+    if tok_ls.found(NUM):
+        atom = Number(token.val)
+        tok_ls.consume(NUM)
+    elif tok_ls.found(BOOL):
+        atom = Boolean(token.val)
+        tok_ls.consume(BOOL)
+    elif tok_ls.found(VAR):
+        atom = variable()
+    elif tok_ls.found(STR):
+        atom = String(token.val)
+        tok_ls.consume(STR)
+    elif tok_ls.found(PAIR):
+        atom = pair()
+    elif tok_ls.found(SLPAREN):
+        atom = listexpr()
     return atom
 
 def pair():
@@ -369,7 +360,7 @@ def pair():
     car = expression()
     tok_ls.consume(COMMA)
     cdr = expression()
-    #Don't consume last SRPAREN, consumed in getToken() call in expression()
+    tok_ls.consume(SRPAREN)
     return Pair(car, cdr)
 
 def listexpr():
@@ -385,8 +376,26 @@ def listexpr():
         args.append(expression())
         if tok_ls.found(COMMA): tok_ls.consume(COMMA)
         else: break
-    #Don't consume last SRPAREN, consumed in getToken() call in expression()
+    tok_ls.consume(SRPAREN)
     return List(args)
+
+def execute():
+    """
+    execute = variable LPAREN {expression {COMMA expression}*}? RPAREN
+    ;
+    """
+    global token
+
+    name = token.val
+    tok_ls.consume(VAR)
+    tok_ls.consume(LPAREN)
+    args = []
+    while not tok_ls.found(RPAREN):
+        args.append(expression())
+        if tok_ls.found(COMMA): tok_ls.consume(COMMA)
+        else: break
+    tok_ls.consume(RPAREN)
+    return Execute(name, args)
 
 def function():
     """

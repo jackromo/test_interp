@@ -99,6 +99,34 @@ class Function(object):
         self.body = body
         self.closure = {} #Current environment, remembered for closure
         self.closure_defined = False #If closure is defined or not
+
+        # Automatically curry the function.
+        # eg. f = function(x,y){return x+y;};
+        # This becomes f = function(x){ return function(y){return x+y;}; };
+        # Rule: func(p1, p2, ..., pn){body}
+        # -> func(p1){ return func(p2) { ... { return func(pn){ body } } ... } }
+        # Notice that if only one parameter exists, currying is pointless.
+
+        # Reduces as follows:
+        # 1. Gather all params.
+        # 2. Create a function for each param, taking param as only parameter.
+        # 3. Put body into last param's function.
+        # 4. Starting at last param's function, put each func into prev param's func body.
+        # 5. Reduce to function remaining.
+        if len(self.params)>1: #Pointless if only one param
+            temp_funcs = []
+            for p in self.params:
+                temp_funcs.append(Function(p, DoNothing()))
+            #Reverse list, since last param's func contains body
+            temp_funcs.reverse()
+            temp_funcs[0].body = self.body
+            #Put functions as return value of each other.
+            for i in range(1, len(temp_funcs)): #Don't access first function, since already set
+                temp_funcs[i].body = Return(temp_funcs[i-1])
+            #Change params and body to outermost function
+            self.params = temp_funcs[len(temp_funcs)-1].params
+            self.body = temp_funcs[len(temp_funcs)-1].body
+            #Currying finished
     def to_str(self):
         return "function(" + ",".join(self.params) + ") {" + self.body.to_str() + "}"
     def reducible(self):
@@ -197,6 +225,64 @@ class Comp(object):
         else:
             return Boolean(get_op(self.op)(self.first.val, self.second.val))
 
+class Execute(object):
+    """Function call. Contains arguments supplied and name of called function."""
+    def __init__(self, name, arg_ls):
+        self.name = name
+        self.arg_ls = arg_ls
+    def to_str(self):
+        return self.name + "(" + ",".join([x.to_str() for x in self.arg_ls]) + ")"
+    def reducible(self):
+        return True
+    def reduce(self, environment):
+        """Reduce all arguments.
+        After, create new machine and run.
+        Reduce to '_return_' variable in environment."""
+        if any([x.reducible() for x in self.arg_ls]):
+            return Execute(self.name, [x.reduce(environment) for x in self.arg_ls])
+        else:
+            #Check if predefined function
+            if self.name == "car": return PredefFuncs.carReduce(self.arg_ls[0])
+            elif self.name == "cdr": return PredefFuncs.cdrReduce(self.arg_ls[0])
+            elif self.name == "setcar": return PredefFuncs.setCarReduce(self.arg_ls[0], self.arg_ls[1])
+            elif self.name == "setcdr": return PredefFuncs.setCdrReduce(self.arg_ls[0], self.arg_ls[1])
+            elif self.name == "print": return PredefFuncs.printReduce(self.arg_ls[0])
+            elif self.name == "input": return PredefFuncs.inputReduce(self.arg_ls[0])
+            elif self.name == "elem": return PredefFuncs.elemReduce(self.arg_ls[0], self.arg_ls[1])
+            elif self.name == "setelem": return PredefFuncs.setElemReduce(self.arg_ls[0], self.arg_ls[1], self.arg_ls[2])
+            #Else, proceed as normal
+            else:
+                #Functions have params, body attributes and closure, so access each
+                params = environment.get(self.name).params
+                body = environment.get(self.name).body
+                closure = environment.get(self.name).closure
+                #Make temporary scope to run function in
+                func_scope = {}
+                #Copy over environment into scope for closure
+                for name,val in closure.items(): func_scope[name] = val
+                #All functions are curried, so:
+                #Apply arg1 to func, get returned func, apply arg2 to it, get next one, etc.
+                #When all args are exhausted, return final value.
+
+                #Put params into top scope as variables with args as values
+                for i in range(len(self.arg_ls)):
+                    #Insert variables of param names with argument values for function
+                    #NB: Only one parameter exists (params[0]) because curried
+                    func_scope[params[0]] = self.arg_ls[i]
+                    #Return value stored as special var, reduce func to it
+                    func_scope["_return_"] = Null()
+                    #Push new scope to environment
+                    environment.push_scope(func_scope)
+                    temp_mach = Machine(body, environment)
+                    #Run function and get value of _return_ variable
+                    result = temp_mach.run().get("_return_")
+                    #If function returned, assume it is next curried function, evaluate its body next
+                    if type(result) is Function:
+                        body = result.body
+                        params = result.params
+                    environment.pop_scope()
+                return result
+
 
 # Statements ##########################################
 # Statements include assignments, if-else, sequences, and null statement.
@@ -286,55 +372,6 @@ class While(object):
         # This stops reduction of body outside of while loop changing next while loop.
         return (If(self.condition, Sequence(copy.deepcopy(self.body), self), DoNothing()), environment)
 
-class Execute(object):
-    """Function call. Contains arguments supplied and name of called function."""
-    def __init__(self, name, arg_ls):
-        self.name = name
-        self.arg_ls = arg_ls
-    def to_str(self):
-        return self.name + "(" + ",".join([x.to_str() for x in self.arg_ls]) + ")"
-    def reducible(self):
-        return True
-    def reduce(self, environment):
-        """Reduce all arguments.
-        After, create new machine and run.
-        Reduce to '_return_' variable in environment."""
-        if any([x.reducible() for x in self.arg_ls]):
-            return Execute(self.name, [x.reduce(environment) for x in self.arg_ls])
-        else:
-            #Check if predefined function
-            if self.name == "car": return PredefFuncs.carReduce(self.arg_ls[0])
-            elif self.name == "cdr": return PredefFuncs.cdrReduce(self.arg_ls[0])
-            elif self.name == "setcar": return PredefFuncs.setCarReduce(self.arg_ls[0], self.arg_ls[1])
-            elif self.name == "setcdr": return PredefFuncs.setCdrReduce(self.arg_ls[0], self.arg_ls[1])
-            elif self.name == "print": return PredefFuncs.printReduce(self.arg_ls[0])
-            elif self.name == "input": return PredefFuncs.inputReduce(self.arg_ls[0])
-            elif self.name == "curry": return PredefFuncs.curryReduce(self.arg_ls[0])
-            elif self.name == "elem": return PredefFuncs.elemReduce(self.arg_ls[0], self.arg_ls[1])
-            elif self.name == "setelem": return PredefFuncs.setElemReduce(self.arg_ls[0], self.arg_ls[1], self.arg_ls[2])
-            #Else, proceed as normal
-            else:
-                #Functions have params, body attributes and closure, so access each
-                params = environment.get(self.name).params
-                body = environment.get(self.name).body
-                closure = environment.get(self.name).closure
-                #Make temporary scope to run function in
-                func_scope = {}
-                #Copy over environment into scope for closure
-                for name,val in closure.items(): func_scope[name] = val
-                #Put params into top scope as variables with args as values
-                for i in range(len(self.arg_ls)):
-                    #Insert variables of param names with argument values for function
-                    func_scope[params[i]] = self.arg_ls[i]
-                #Return value stored as special var, reduce func to it
-                func_scope["_return_"] = Null()
-                #Push new scope to environment
-                environment.push_scope(func_scope)
-                temp_mach = Machine(body, environment)
-                #Run function and return value of _return_ variable
-                result = temp_mach.run().get("_return_")
-                environment.pop_scope()
-                return result
 
 class ExecStmt(object):
     """If a function is called alone, eg. 'print(5);', must be considered as a statement.
@@ -457,33 +494,6 @@ class PredefFuncs(object):
         else:
             #Print everything else (numbers, bools) normally
             return String(raw_input(val.to_str()))
-
-    @staticmethod
-    def curryReduce(func):
-        """Return the curried version of a function.
-        eg. f = function(x,y){return x+y;};
-        This becomes f = function(x){ return function(y){return x+y;}; };
-        Rule: func(p1, p2, ..., pn){body}
-        -> func(p1){ return func(p2) { ... { return func(pn){ body } } ... } }
-
-        Reduces as follows:
-        1. Gather all params.
-        2. Create a function for each param, taking param as only parameter.
-        3. Put body into last param's function.
-        4. Starting at last param's function, put each func into prev param's func body.
-        5. Reduce to function remaining."""
-        temp_funcs = []
-        param_ls = func.params
-        for p in param_ls:
-            temp_funcs.append(Function(p, DoNothing()))
-        #Reverse list, since last param's func contains body
-        temp_funcs.reverse()
-        temp_funcs[0].body = func.body
-        #Put functions as return value of each other.
-        for i in range(1, len(temp_funcs)): #Don't access first function, since already set
-            temp_funcs[i].body = Return(temp_funcs[i-1])
-
-        return temp_funcs[len(temp_funcs)-1] #Result is last func, ie. first param's function
 
 
 # Define machine to run evaluator.########################

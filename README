@@ -22,7 +22,7 @@ It can comprehend:
   -while loops
   -function definitions and calls
     -closure supported and functions can be passed as variables
-    -currying
+    -automatic currying, partial applications
     -function scope
   -special print(val) and input(val) functions
   -pairs, with car(p), cdr(p), p=setcar(p,newcar) and p=setcdr(p,newcdr) functions for pair 'p'
@@ -49,10 +49,11 @@ Planned features:
 The language is weakly typed, so variables can have any value at any time.
 
 
-x = 5;            // Integer
-x = "Hello";      // String
-x = false;        // Boolean
-x = [1, "hey!"];  // Pair (can take any data types as vals)
+x = 5;                // Integer
+x = "Hello";          // String
+x = false;            // Boolean
+x = pair[1, "hey!"];  // Pair (can take any data types as vals)
+x = [1, 2, 3];        // List
 
 
 Several operations and comparisons are supported: +, -, *, /, %, >, <, and ==.
@@ -77,18 +78,17 @@ g = f(2);  // g = function(a){return 2+a;};
 x = g(4);  // x = 6
 
 
-Currying is another supported feature.
+All functions are automatically curried, so partial application is supported.
+The predefined function curry() used to be used for this, but is now deprecated.
 
 
 add = function(x,y){    // Example multi argument function
   return x+y;
 };
-curried = curry(add);   // Curried version of 'add' function
-addfive = curried(5);
+addfive = add(5);       // addfive = function(y) { return 5+y; }
 print(addfive(6));      // Prints '11'
 
 
-Note how print(curry(add)(5)(6)); is not used, as the semantics of the language don't accept it for now.
 Pairs and lists have several special functions.
 
 
@@ -110,6 +110,17 @@ print(5);                       // Print out value 5
 x = function(x){return x+1};
 print(x);                       // Print out function
 y = input("Type something: ")   // print out "Type something: ", y = whatever is typed
+
+
+NB: Predefined functions cannot be partially applied.
+To partially apply one, use this workaround:
+
+
+partialsetcar = function(x, y) {  //Outer function will be curried, so as if setcar() was curried
+  return setcar(x,y);
+}
+g = partialsetcar(pair[1,2]);   // x = Pair[1,2]
+print(g(5));                    // prints (5, 2)
 
 
 For control flow, if statements and while loops are available.
